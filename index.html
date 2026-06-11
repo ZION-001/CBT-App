@@ -1,0 +1,903 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<title>CBT App</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+html{-webkit-tap-highlight-color:transparent;}
+body{font-family:Georgia,'Times New Roman',serif;background:#fff;color:#000;min-height:100dvh;}
+
+/* ── Screens ── */
+.screen{display:none;min-height:100dvh;flex-direction:column;}
+.screen.on{display:flex;}
+
+/* ── Top bar ── */
+.topbar{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-bottom:2px solid #000;background:#fff;position:sticky;top:0;z-index:10;}
+.topbar-title{font-size:.8rem;font-weight:bold;letter-spacing:3px;text-transform:uppercase;}
+.back-btn{font-size:.75rem;letter-spacing:1px;text-transform:uppercase;cursor:pointer;text-decoration:none !important;font-family:inherit;border:none;background:none;color:#000;padding:4px 0;}
+
+/* ── Buttons ── */
+.btn{display:inline-flex;align-items:center;justify-content:center;padding:12px 28px;font-family:Georgia,serif;font-size:.9rem;font-weight:bold;letter-spacing:2px;text-transform:uppercase;cursor:pointer;border:2px solid #000;background:#000;color:#fff;outline:none;user-select:none;transition:background .15s,color .15s;}
+.btn:active{opacity:.8;}
+.btn.ghost{background:#fff;color:#000;}
+.btn.sm{padding:7px 14px;font-size:.75rem;letter-spacing:1px;}
+.btn.full{width:100%;}
+.btn:disabled{opacity:.4;cursor:default;}
+
+/* ── Inputs ── */
+.inp{display:block;width:100%;padding:10px 14px;font-family:Georgia,serif;font-size:.9rem;border:2px solid #000;background:#fff;color:#000;outline:none;}
+.inp::placeholder{color:#aaa;font-style:italic;font-size:.85rem;}
+.inp:focus{background:#fafafa;}
+textarea.inp{min-height:160px;resize:vertical;}
+.sel{display:block;width:100%;padding:10px 14px;font-family:Georgia,serif;font-size:.9rem;border:2px solid #000;background:#fff;color:#000;outline:none;cursor:pointer;}
+.lbl{display:block;font-size:.7rem;font-weight:bold;letter-spacing:2px;text-transform:uppercase;margin-bottom:5px;}
+.fg{margin-bottom:14px;}
+
+/* ── Page ── */
+.page{padding:16px;flex:1;overflow-y:auto;}
+.pg-title{font-size:.95rem;font-weight:bold;letter-spacing:3px;text-transform:uppercase;padding-bottom:10px;border-bottom:2px solid #000;margin-bottom:16px;}
+
+/* ── Bars ── */
+.admin-bar{background:#000;color:#fff;text-align:center;padding:6px;font-size:.7rem;letter-spacing:2px;text-transform:uppercase;}
+.ctx-bar{background:#f5f5f5;border-bottom:1px solid #ccc;padding:6px 16px;font-size:.75rem;letter-spacing:1px;color:#555;text-transform:uppercase;}
+
+/* ── List items ── */
+.li{display:flex;align-items:center;justify-content:space-between;padding:12px 14px;border:1px solid #000;margin-bottom:8px;}
+.li-name{font-size:.9rem;font-weight:bold;}
+.li-meta{font-size:.7rem;letter-spacing:1px;text-transform:uppercase;color:#666;margin-top:2px;}
+.li-actions{display:flex;gap:6px;flex-shrink:0;}
+
+/* ── Inline form ── */
+.inline-form{border:1px solid #000;padding:14px;margin-bottom:14px;display:none;}
+
+/* ── Quiz browser ── */
+.subj-block{border:2px solid #000;margin-bottom:14px;}
+.subj-head{background:#000;color:#fff;padding:9px 14px;font-size:.85rem;font-weight:bold;letter-spacing:2px;text-transform:uppercase;}
+.topic-block{border-top:1px solid #000;}
+.topic-head{padding:7px 14px;font-size:.75rem;letter-spacing:1px;text-transform:uppercase;background:#f5f5f5;border-bottom:1px dashed #999;color:#555;}
+.quiz-row{display:flex;align-items:center;justify-content:space-between;padding:10px 14px 10px 20px;border-bottom:1px solid #eee;cursor:pointer;}
+.quiz-row:last-child{border-bottom:none;}
+.quiz-row:active{background:#f9f9f9;}
+.quiz-row-name{font-size:.85rem;}
+
+/* ── Quiz taking ── */
+.prog-wrap{height:3px;background:#eee;}
+.prog-bar{height:100%;background:#000;transition:width .3s;}
+.qhdr{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-bottom:1px solid #ccc;}
+.qhdr-counter{font-size:.75rem;letter-spacing:2px;text-transform:uppercase;color:#666;}
+.qhdr-title{font-size:.8rem;font-weight:bold;max-width:60%;text-align:right;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.q-area{padding:20px 16px;flex:1;overflow-y:auto;}
+.q-num{font-size:.7rem;letter-spacing:2px;text-transform:uppercase;color:#888;margin-bottom:6px;}
+.q-text{font-size:.95rem;font-weight:bold;line-height:1.6;margin-bottom:20px;}
+.opt{display:flex;align-items:flex-start;gap:12px;padding:11px 14px;border:2px solid #000;margin-bottom:10px;cursor:pointer;user-select:none;}
+.opt:active{background:#f0f0f0;}
+.opt.sel{background:#000;color:#fff;}
+.opt-ltr{font-weight:bold;font-size:.85rem;min-width:18px;flex-shrink:0;line-height:1.4;}
+.opt-txt{font-size:.85rem;line-height:1.4;}
+.q-nav{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-top:2px solid #000;}
+
+/* ── Results ── */
+.result-box{border:3px solid #000;padding:28px 20px;text-align:center;margin-bottom:20px;}
+.result-pct{font-size:3rem;font-weight:bold;line-height:1;}
+.result-lbl{font-size:.7rem;letter-spacing:2px;text-transform:uppercase;color:#888;margin-top:4px;}
+.result-sub{font-size:.85rem;color:#555;margin-top:8px;}
+.rev-card{border:1px solid #000;padding:12px;margin-bottom:10px;}
+.rev-q{font-size:.85rem;font-weight:bold;margin-bottom:8px;line-height:1.4;}
+.rev-opt{font-size:.8rem;padding:2px 0;line-height:1.6;}
+.rev-opt.right{font-weight:bold;}
+.rev-opt.wrong{text-decoration:line-through;color:#888;}
+.rev-exp{font-size:.75rem;color:#555;margin-top:6px;padding-top:6px;border-top:1px dashed #ccc;}
+
+/* ── AI box ── */
+.ai-box{border:2px dashed #000;padding:14px;margin-bottom:14px;}
+.ai-box-title{font-size:.7rem;font-weight:bold;letter-spacing:2px;text-transform:uppercase;margin-bottom:10px;}
+.q-preview{border:1px solid #ccc;padding:10px;margin-bottom:8px;}
+.q-preview-q{font-size:.85rem;font-weight:bold;margin-bottom:4px;}
+.q-preview-opts{font-size:.78rem;color:#444;line-height:1.7;}
+.q-preview-ans{font-size:.78rem;font-weight:bold;margin-top:3px;}
+
+/* ── Misc ── */
+.radio-row{display:flex;gap:16px;}
+.radio-lbl{display:flex;align-items:center;gap:5px;cursor:pointer;font-size:.85rem;}
+.step-hdr{font-size:.7rem;font-weight:bold;letter-spacing:2px;text-transform:uppercase;padding:8px 0;border-bottom:1px solid #ccc;margin-bottom:14px;color:#555;}
+.empty{text-align:center;padding:32px 16px;font-size:.85rem;color:#aaa;border:1px dashed #ccc;}
+.loading{text-align:center;padding:32px 16px;font-size:.75rem;letter-spacing:2px;text-transform:uppercase;color:#aaa;}
+.divider{display:flex;align-items:center;gap:10px;margin:14px 0;color:#999;font-size:.75rem;letter-spacing:1px;text-transform:uppercase;}
+.divider::before,.divider::after{content:'';flex:1;height:1px;background:#ddd;}
+#toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#000;color:#fff;padding:9px 20px;font-size:.8rem;letter-spacing:1px;opacity:0;transition:opacity .25s;pointer-events:none;z-index:100;white-space:nowrap;max-width:90vw;overflow:hidden;text-overflow:ellipsis;}
+#toast.on{opacity:1;}
+.q-grid-btn{display:inline-flex;align-items:center;justify-content:center;width:32px;height:32px;border:2px solid #000;font-size:.75rem;font-weight:bold;cursor:pointer;margin-right:5px;font-family:Georgia,serif;background:#fff;flex-shrink:0;}
+.q-grid-btn.answered{background:#000;color:#fff;}
+.q-grid-btn.current{border-width:3px;}
+/* Math rendering */
+.mf{display:inline-flex;flex-direction:column;align-items:center;vertical-align:middle;font-size:.88em;margin:0 2px;}
+.mn{border-bottom:1px solid currentColor;padding:0 3px;text-align:center;}
+.md{padding:0 3px;text-align:center;}
+.math{font-style:italic;}
+.mathd{text-align:center;margin:8px 0;font-style:italic;}
+@media(min-width:600px){.page{max-width:600px;margin:0 auto;}}
+</style>
+</head>
+<body>
+
+<div id="toast"></div>
+
+<!-- ════════════ HOME ════════════ -->
+<div id="s-home" class="screen on">
+  <div style="flex:1;display:flex;align-items:center;justify-content:center;">
+    <div style="width:90%;max-width:360px;border:3px solid #000;padding:52px 32px;text-align:center;">
+      <div style="font-size:3rem;font-weight:bold;letter-spacing:6px;text-transform:uppercase;line-height:1;">CBT</div>
+      <div style="font-size:.65rem;letter-spacing:3px;text-transform:uppercase;color:#888;margin:6px 0 36px;">Computer Based Test</div>
+      <button class="btn full" onclick="loadPublicQuizzes()">Take Quiz</button>
+      <div style="margin-top:20px;border-top:1px solid #ccc;padding-top:16px;">
+        <div style="font-size:.65rem;letter-spacing:2px;text-transform:uppercase;color:#888;margin-bottom:8px;">Have a code?</div>
+        <div style="display:flex;flex-direction:column;gap:8px;">
+          <input class="inp" id="home-code" placeholder="Enter quiz code here"
+            style="width:100%;text-transform:uppercase;text-align:center;"
+            onkeyup="if(event.key==='Enter')submitCode()">
+          <button class="btn full" onclick="submitCode()">Go ▶</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ════════════ NAME ENTRY ════════════ -->
+<div id="s-name-entry" class="screen">
+  <div style="flex:1;display:flex;align-items:center;justify-content:center;">
+    <div style="width:90%;max-width:360px;border:3px solid #000;padding:40px 28px;text-align:center;">
+      <div style="font-size:.7rem;letter-spacing:3px;text-transform:uppercase;color:#888;margin-bottom:6px;">Starting</div>
+      <div id="name-entry-quiz-title" style="font-size:1.1rem;font-weight:bold;margin-bottom:28px;line-height:1.3;"></div>
+      <label class="lbl" style="text-align:left;display:block;">Enter Your Name</label>
+      <input class="inp" id="user-name-input" placeholder="Full name" style="margin-bottom:14px;text-align:center;"
+        onkeydown="if(event.key==='Enter')beginQuiz()">
+      <button class="btn full" onclick="beginQuiz()">Start Quiz</button>
+      <div style="margin-top:12px;">
+        <button class="back-btn" onclick="show('quiz-list')">◀ Back to list</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ════════════ QUIZ LIST ════════════ -->
+<div id="s-quiz-list" class="screen">
+  <div class="topbar">
+    <button class="back-btn" onclick="show('home')">◀ Back</button>
+    <span class="topbar-title">CBT App</span>
+    <span></span>
+  </div>
+  <div class="page">
+    <div class="pg-title">Available Quizzes</div>
+    <div id="quiz-list-body"></div>
+  </div>
+</div>
+
+<!-- ════════════ QUIZ TAKING ════════════ -->
+<div id="s-quiz" class="screen">
+  <div class="prog-wrap"><div class="prog-bar" id="q-prog"></div></div>
+  <div class="qhdr">
+    <div class="qhdr-counter" id="q-counter">—</div>
+    <div class="qhdr-title" id="q-quiz-title">—</div>
+  </div>
+  <div class="q-area">
+    <div class="q-num" id="q-num"></div>
+    <div class="q-text" id="q-text"></div>
+    <div id="q-opts"></div>
+  </div>
+  <div id="q-grid-wrap" style="padding:10px 16px;border-top:1px solid #ddd;overflow-x:auto;white-space:nowrap;"></div>
+  <div class="q-nav">
+    <button class="btn ghost sm" id="q-prev" onclick="prevQ()">◀ Prev</button>
+    <button class="btn sm" id="q-next" onclick="nextQ()">Next ▶</button>
+  </div>
+</div>
+
+<!-- ════════════ RESULTS ════════════ -->
+<div id="s-results" class="screen">
+  <div class="topbar">
+    <button class="back-btn" onclick="show('home')">◀ Home</button>
+    <span class="topbar-title">Results</span>
+    <span></span>
+  </div>
+  <div class="page">
+    <div id="result-box" class="result-box"></div>
+    <div class="pg-title">Review</div>
+    <div id="result-review"></div>
+  </div>
+</div>
+
+<!-- ════════════ ADMIN: SUBJECTS ════════════ -->
+<div id="s-admin" class="screen">
+  <div class="topbar">
+    <button class="back-btn" onclick="show('home')">◀ Exit</button>
+    <span class="topbar-title">Admin Panel</span>
+    <span></span>
+  </div>
+  <div class="admin-bar">Admin Mode · ADMCBT2026</div>
+  <div class="page">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+      <div class="pg-title" style="margin:0;border:0;padding:0;">Subjects</div>
+      <button class="btn sm" onclick="toggleIF('if-subj')">+ Subject</button>
+    </div>
+    <div id="if-subj" class="inline-form">
+      <div class="fg"><label class="lbl">Subject Name</label><input class="inp" id="new-subj-name" placeholder="e.g. Mathematics"></div>
+      <div style="display:flex;gap:8px;">
+        <button class="btn sm" onclick="doCreateSubject()">Save</button>
+        <button class="btn ghost sm" onclick="toggleIF('if-subj')">Cancel</button>
+      </div>
+    </div>
+    <div id="admin-subjects"></div>
+  </div>
+</div>
+
+<!-- ════════════ ADMIN: TOPICS ════════════ -->
+<div id="s-admin-topics" class="screen">
+  <div class="topbar">
+    <button class="back-btn" onclick="show('admin');loadSubjects()">◀ Subjects</button>
+    <span class="topbar-title">Admin Panel</span>
+    <span></span>
+  </div>
+  <div class="admin-bar">Admin Mode</div>
+  <div class="ctx-bar" id="ctx-subj"></div>
+  <div class="page">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+      <div class="pg-title" style="margin:0;border:0;padding:0;">Topics</div>
+      <button class="btn sm" onclick="toggleIF('if-topic')">+ Topic</button>
+    </div>
+    <div id="if-topic" class="inline-form">
+      <div class="fg"><label class="lbl">Topic Name</label><input class="inp" id="new-topic-name" placeholder="e.g. Algebra"></div>
+      <div style="display:flex;gap:8px;">
+        <button class="btn sm" onclick="doCreateTopic()">Save</button>
+        <button class="btn ghost sm" onclick="toggleIF('if-topic')">Cancel</button>
+      </div>
+    </div>
+    <div id="admin-topics"></div>
+  </div>
+</div>
+
+<!-- ════════════ ADMIN: QUIZZES ════════════ -->
+<div id="s-admin-quizzes" class="screen">
+  <div class="topbar">
+    <button class="back-btn" onclick="show('admin-topics');loadTopics()">◀ Topics</button>
+    <span class="topbar-title">Admin Panel</span>
+    <span></span>
+  </div>
+  <div class="admin-bar">Admin Mode</div>
+  <div class="ctx-bar" id="ctx-topic"></div>
+  <div class="page">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+      <div class="pg-title" style="margin:0;border:0;padding:0;">Quizzes</div>
+      <button class="btn sm" onclick="openCreateQuiz()">+ Quiz</button>
+    </div>
+    <div id="admin-quizzes"></div>
+  </div>
+</div>
+
+<!-- ════════════ CREATE QUIZ ════════════ -->
+<div id="s-create-quiz" class="screen">
+  <div class="topbar">
+    <button class="back-btn" onclick="show('admin-quizzes');loadQuizzes()">◀ Quizzes</button>
+    <span class="topbar-title">Create Quiz</span>
+    <span></span>
+  </div>
+  <div class="admin-bar" id="cq-bar">New Quiz</div>
+  <div class="page">
+
+    <!-- Step 1 -->
+    <div id="cq-step1">
+      <div class="step-hdr">Step 1 of 2 — Quiz Details</div>
+      <div class="fg"><label class="lbl">Quiz Title</label><input class="inp" id="cq-title" placeholder="e.g. Chapter 1 Test"></div>
+      <div class="fg">
+        <label class="lbl">Visibility</label>
+        <div class="radio-row">
+          <label class="radio-lbl"><input type="radio" name="cq-vis" value="true" checked onchange="cqVisChange(this)"> Public</label>
+          <label class="radio-lbl"><input type="radio" name="cq-vis" value="false" onchange="cqVisChange(this)"> Private (by code)</label>
+        </div>
+      </div>
+      <div id="cq-code-row" class="fg" style="display:none;">
+        <label class="lbl">Access Code</label>
+        <input class="inp" id="cq-code" placeholder="e.g. MATHS001" style="text-transform:uppercase;letter-spacing:2px;">
+      </div>
+      <button class="btn full" onclick="cqNext()">Next: Add Questions ▶</button>
+    </div>
+
+    <!-- Step 2 -->
+    <div id="cq-step2" style="display:none;">
+      <div class="step-hdr">Step 2 of 2 — Add Questions</div>
+      <div class="ctx-bar" id="cq-ctx" style="margin:-16px -16px 14px;padding:6px 16px;"></div>
+
+      <!-- AI Parser -->
+      <div class="ai-box">
+        <div class="ai-box-title">🤖 AI Question Parser</div>
+        <div style="font-size:.75rem;color:#666;line-height:1.5;margin-bottom:10px;">
+          Paste questions in any format. The AI will structure them automatically.
+        </div>
+        <textarea class="inp" id="ai-text" placeholder="Example:
+1. What is 2+2?
+A) 3  B) 4  C) 5  D) 6
+Answer: B. Basic arithmetic.
+
+2. Capital of Nigeria?
+A) Lagos  B) Abuja  C) Kano  D) PH
+Ans: B"></textarea>
+        <div style="display:flex;align-items:center;gap:10px;margin-top:10px;">
+          <button class="btn sm" onclick="aiParse()">Parse with AI</button>
+          <span id="ai-status" style="font-size:.75rem;color:#555;"></span>
+        </div>
+      </div>
+
+      <!-- AI Preview -->
+      <div id="ai-preview" style="display:none;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+          <span style="font-size:.75rem;font-weight:bold;letter-spacing:1px;text-transform:uppercase;">Parsed: <span id="ai-count">0</span> questions</span>
+          <button class="btn ghost sm" onclick="aiClear()">Clear</button>
+        </div>
+        <div id="ai-preview-list"></div>
+        <button class="btn full" style="margin-top:12px;" onclick="saveAIQs()">✓ Save Questions</button>
+      </div>
+
+      <!-- Divider -->
+      <div class="divider">or add manually</div>
+      <button class="btn ghost full" onclick="addManualQ()">+ Add Question Manually</button>
+      <div id="manual-list" style="margin-top:12px;"></div>
+      <div id="manual-save" style="display:none;margin-top:10px;">
+        <button class="btn full" onclick="saveManualQs()">✓ Save Manual Questions</button>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+/* ══ Math Rendering ══ */
+function renderMatrix(content, lb, rb) {
+  var rows = content.split(/\\/);
+  var tbl = '<table style="display:inline-table;border-spacing:3px 2px;vertical-align:middle">';
+  for (var r = 0; r < rows.length; r++) {
+    var cells = rows[r].trim().split(/&amp;|&/);
+    tbl += '<tr>';
+    for (var c = 0; c < cells.length; c++)
+      tbl += '<td style="text-align:center;padding:1px 4px">' + rm(cells[c].trim()) + '</td>';
+    tbl += '</tr>';
+  }
+  tbl += '</table>';
+  var sz = 'font-size:' + (Math.max(rows.length,1)*1.1) + 'em;font-weight:100;line-height:1;vertical-align:middle';
+  return '<span style="display:inline-flex;align-items:center">'
+    + (lb ? '<span style="'+sz+'">'+lb+'</span>' : '')
+    + tbl
+    + (rb ? '<span style="'+sz+'">'+rb+'</span>' : '')
+    + '</span>';
+}
+
+function rm(s) {
+  s=s.replace(/&amp;/g,'&').replace(/&nbsp;/g,' ').replace(/&lt;/g,'<').replace(/&gt;/g,'>');
+  s=s.replace(/\\begin\{bmatrix\}([\s\S]*?)\\end\{bmatrix\}/g,function(m,c){return renderMatrix(c,'[',']');});
+  s=s.replace(/\\begin\{pmatrix\}([\s\S]*?)\\end\{pmatrix\}/g,function(m,c){return renderMatrix(c,'(',')');}); 
+  s=s.replace(/\\begin\{vmatrix\}([\s\S]*?)\\end\{vmatrix\}/g,function(m,c){return renderMatrix(c,'|','|');});
+  s=s.replace(/\\begin\{matrix\}([\s\S]*?)\\end\{matrix\}/g,  function(m,c){return renderMatrix(c,'','');});
+  s=s.replace(/\\begin\{[a-z]*matrix[*]?\}([\s\S]*?)\\end\{[a-z]*matrix[*]?\}/g,function(m,c){return renderMatrix(c,'[',']');});
+  s=s.replace(/\\begin\{array\}\{[^}]*\}([\s\S]*?)\\end\{array\}/g,function(m,c){return renderMatrix(c,'','');});
+  s=s.replace(/\\begin\{tabular\}\{[^}]*\}([\s\S]*?)\\end\{tabular\}/g,function(m,c){return renderMatrix(c,'','');});
+  s=s.replace(/\\begin\{cases\}([\s\S]*?)\\end\{cases\}/g,function(m,c){
+    var rows=c.split(/\\/);
+    var h='<span style="display:inline-flex;align-items:flex-start"><span style="font-size:2em;font-weight:100">&#123;</span><span style="display:inline-flex;flex-direction:column;padding-left:4px">';
+    for(var r=0;r<rows.length;r++){var t=rows[r].trim().replace(/&/g,'');if(t)h+='<span>'+rm(t)+'</span>';}
+    return h+'</span></span>';
+  });
+  s=s.replace(/\\frac\{([^{}]*)\}\{([^{}]*)\}/g,function(m,n,d){return '<span class="mf"><span class="mn">'+rm(n)+'</span><span class="md">'+rm(d)+'</span></span>';});
+  s=s.replace(/\\sqrt\{([^}]*)\}/g,function(m,x){return '&radic;<span style="text-decoration:overline">'+rm(x)+'</span>';});
+  s=s.replace(/\\sqrt/g,'&radic;');
+  s=s.replace(/\^o\b/g,'&deg;'); s=s.replace(/\^O\b/g,'&deg;');
+  s=s.replace(/\\circ\b/g,'&deg;'); s=s.replace(/\\degree\b/g,'&deg;');
+  s=s.replace(/\^\{([^}]*)\}/g,function(m,x){return '<sup>'+rm(x)+'</sup>';});
+  s=s.replace(/_\{([^}]*)\}/g, function(m,x){return '<sub>'+rm(x)+'</sub>';});
+  s=s.replace(/\^([^\s{\\<&])/g,'<sup>$1</sup>');
+  s=s.replace(/_([^\s{\\<&])/g, '<sub>$1</sub>');
+  var SYM={'times':'&times;','div':'&divide;','pm':'&plusmn;','mp':'&#8723;','cdot':'&middot;',
+    'to':'&rarr;','rightarrow':'&rarr;','leftarrow':'&larr;','Rightarrow':'&rArr;','leftrightarrow':'&harr;',
+    'geq':'&ge;','ge':'&ge;','leq':'&le;','le':'&le;','neq':'&ne;','ne':'&ne;','approx':'&asymp;','equiv':'&equiv;',
+    'infty':'&infin;','pi':'&pi;','alpha':'&alpha;','beta':'&beta;','gamma':'&gamma;','delta':'&delta;',
+    'epsilon':'&varepsilon;','theta':'&theta;','lambda':'&lambda;','mu':'&mu;','nu':'&nu;',
+    'sigma':'&sigma;','phi':'&phi;','psi':'&psi;','omega':'&omega;',
+    'Delta':'&Delta;','Sigma':'&Sigma;','Omega':'&Omega;','Theta':'&Theta;','Lambda':'&Lambda;','Phi':'&Phi;',
+    'log':'log','ln':'ln','sin':'sin','cos':'cos','tan':'tan','cot':'cot','sec':'sec','csc':'csc',
+    'int':'&int;','sum':'&sum;','prod':'&prod;','partial':'&part;','nabla':'&nabla;',
+    'in':'&isin;','notin':'&notin;','subset':'&sub;','cup':'&cup;','cap':'&cap;','emptyset':'&empty;',
+    'forall':'&forall;','exists':'&exist;','ldots':'&hellip;','quad':'&ensp;','qquad':'&emsp;',
+    'hline':'','begin':'','end':'','left':'','right':''};
+  for(var k in SYM) s=s.replace(new RegExp('\\'+k+'\\b','g'),SYM[k]);
+  s=s.replace(/\\[a-zA-Z]+/g,'');
+  s=s.replace(/[{}]/g,'');
+  return s;
+}
+
+function renderMath(el) {
+  var h = el.innerHTML;
+  h=h.replace(/\*\*([^*\n]+)\*\*/g,'<strong>$1</strong>');
+  h=h.replace(/\*([^*\n]+)\*/g,'<em>$1</em>');
+  h=h.replace(/\\\([\s\S]*?\\\)/g,function(m){return '<span class="math">'+rm(m.slice(2,-2))+'</span>';});
+  h=h.replace(/\\\[([\s\S]*?)\\\]/g,function(m){return '<div class="mathd">'+rm(m.slice(2,-2))+'</div>';});
+  el.innerHTML=h;
+}
+
+/* ══ Config ══ */
+const GAS      = 'https://script.google.com/macros/s/AKfycbzGW8SWtuuJM0KF5P26p_CNKFXrk9_e7gfjgrBdecwH6DghyMdBFtrke5Nrqbpxl_aPww/exec';
+const GROQ_KEY = 'YOUR_GROQ_API_KEY_HERE'; // ← Replace with your real key
+const ADM      = 'ADMCBT2026';
+
+/* ══ State ══ */
+const S = {
+  subject: null, topic: null, quiz: null,
+  Qs: [], ans: [], qi: 0,
+  aiQs: [], pendQId: null, manN: 0,
+  userName: null
+};
+
+/* ══ Utils ══ */
+const $ = id => document.getElementById(id);
+
+function show(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('on'));
+  $('s-' + id).classList.add('on');
+  if (id === 'home') S.userName = null;
+}
+
+let _tt;
+function toast(msg) {
+  const el = $('toast');
+  el.textContent = msg;
+  el.classList.add('on');
+  clearTimeout(_tt);
+  _tt = setTimeout(() => el.classList.remove('on'), 2600);
+}
+
+function esc(s) {
+  return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+async function api(params) {
+  try {
+    const r = await fetch(GAS + '?' + new URLSearchParams(params));
+    return await r.json();
+  } catch(e) { return { success: false, error: e.toString() }; }
+}
+
+async function apiBatch(quizId, questions) {
+  const SIZE = 12;
+  let total = 0;
+  for (let i = 0; i < questions.length; i += SIZE) {
+    const r = await api({ action: 'addQuestions', quizId, questions: JSON.stringify(questions.slice(i, i + SIZE)) });
+    if (!r.success) return r;
+    total += r.data.count;
+  }
+  return { success: true, count: total };
+}
+
+function toggleIF(id) {
+  const el = $(id);
+  el.style.display = el.style.display === 'block' ? 'none' : 'block';
+}
+
+/* ══ HOME ══ */
+async function submitCode() {
+  const code = $('home-code').value.trim().toUpperCase();
+  if (!code) { toast('Enter a code first'); return; }
+  if (code === ADM) { S.userName = 'Admin'; show('admin'); loadSubjects(); return; }
+  toast('Looking up…');
+  const r = await api({ action: 'getQuizByCode', code });
+  if (r.success && r.data) startQuiz(r.data.QuizID, r.data.QuizTitle);
+  else toast('Code not found. Try again.');
+}
+
+/* ══ QUIZ LIST ══ */
+async function loadPublicQuizzes() {
+  show('quiz-list');
+  $('quiz-list-body').innerHTML = '<div class="loading">Loading quizzes…</div>';
+  const r = await api({ action: 'getPublicQuizzes' });
+  if (!r.success || !r.data?.length) {
+    $('quiz-list-body').innerHTML = '<div class="empty">No quizzes available yet.</div>';
+    return;
+  }
+  $('quiz-list-body').innerHTML = r.data.map(subj => `
+    <div class="subj-block">
+      <div class="subj-head">${esc(subj.SubjectName)}</div>
+      ${subj.topics.map(t => `
+        <div class="topic-block">
+          <div class="topic-head">${esc(t.TopicName)}</div>
+          ${t.quizzes.map(q => `
+            <div class="quiz-row" onclick="startQuiz('${q.QuizID}','${esc(q.QuizTitle).replace(/'/g,"\\'")')}">
+              <span class="quiz-row-name">${esc(q.QuizTitle)}</span>
+              <span style="color:#999;font-size:.8rem;">▶</span>
+            </div>
+          `).join('')}
+        </div>
+      `).join('')}
+    </div>
+  `).join('');
+}
+
+/* ══ QUIZ TAKING ══ */
+function startQuiz(quizId, title) {
+  // Store quiz info, then go to name entry (unless admin)
+  S.quiz = { id: quizId, title };
+  if (S.userName) {
+    loadAndStartQuiz();
+  } else {
+    $('name-entry-quiz-title').textContent = title;
+    $('user-name-input').value = '';
+    show('name-entry');
+  }
+}
+
+async function beginQuiz() {
+  const name = $('user-name-input').value.trim();
+  if (!name) { toast('Enter your name'); return; }
+  S.userName = name;
+  loadAndStartQuiz();
+}
+
+async function loadAndStartQuiz() {
+  show('quiz');
+  $('q-quiz-title').textContent = S.quiz.title;
+  $('q-opts').innerHTML = '<div class="loading">Loading…</div>';
+  const r = await api({ action: 'getQuestions', quizId: S.quiz.id });
+  if (!r.success || !r.data?.length) {
+    $('q-text').textContent = 'No questions found for this quiz.';
+    $('q-opts').innerHTML = '';
+    return;
+  }
+  S.Qs  = r.data;
+  S.ans = new Array(r.data.length).fill(null);
+  S.qi  = 0;
+  renderQ();
+}
+
+function renderQ() {
+  const q = S.Qs[S.qi], n = S.Qs.length;
+  $('q-counter').textContent = `${S.qi + 1} / ${n}`;
+  $('q-num').textContent     = `Question ${S.qi + 1}`;
+  $('q-text').innerHTML      = esc(q.Question);
+  renderMath($('q-text'));
+  $('q-prog').style.width    = `${(S.qi + 1) / n * 100}%`;
+  const opts = [q.OptionA, q.OptionB, q.OptionC, q.OptionD];
+  $('q-opts').innerHTML = ['A','B','C','D'].map((l, i) => `
+    <div class="opt${S.ans[S.qi]===l?' sel':''}" onclick="pickAns('${l}')">
+      <span class="opt-ltr">${l}.</span>
+      <span class="opt-txt">${esc(opts[i])}</span>
+    </div>
+  `).join('');
+  document.querySelectorAll('#q-opts .opt-txt').forEach(renderMath);
+  $('q-prev').style.visibility = S.qi === 0 ? 'hidden' : 'visible';
+  $('q-next').textContent      = S.qi === n - 1 ? 'Submit' : 'Next ▶';
+  // Question number grid
+  $('q-grid-wrap').innerHTML = S.Qs.map((_, i) => `
+    <div class="q-grid-btn${S.ans[i]!==null?' answered':''}${i===S.qi?' current':''}" onclick="jumpQ(${i})">${i+1}</div>
+  `).join('');
+}
+
+function jumpQ(i) { S.qi = i; renderQ(); }
+
+function pickAns(l) {
+  S.ans[S.qi] = l;
+  document.querySelectorAll('.opt').forEach((el, i) => {
+    el.classList.toggle('sel', ['A','B','C','D'][i] === l);
+  });
+  // refresh grid to show answered state
+  document.querySelectorAll('.q-grid-btn').forEach((el, i) => {
+    el.classList.toggle('answered', S.ans[i] !== null);
+  });
+}
+
+function prevQ() { if (S.qi > 0) { S.qi--; renderQ(); } }
+
+function nextQ() {
+  if (S.qi < S.Qs.length - 1) { S.qi++; renderQ(); return; }
+  const u = S.ans.filter(a => a === null).length;
+  if (u > 0 && !confirm(`${u} question(s) unanswered. Submit anyway?`)) return;
+  showResults();
+}
+
+/* ══ RESULTS ══ */
+async function showResults() {
+  show('results');
+  const n = S.Qs.length;
+  let correct = 0;
+  S.Qs.forEach((q, i) => { if (S.ans[i] === q.CorrectAnswer) correct++; });
+  const pct = Math.round(correct / n * 100);
+
+  $('result-box').innerHTML = `
+    <div style="font-size:.75rem;letter-spacing:2px;text-transform:uppercase;color:#888;margin-bottom:4px;">${esc(S.userName || '')}</div>
+    <div class="result-pct">${pct}%</div>
+    <div class="result-lbl">Score</div>
+    <div class="result-sub">${correct} / ${n} correct</div>
+    <div style="margin-top:16px;"><button class="btn ghost sm" onclick="reloadAndStart()">Try Again</button></div>
+  `;
+
+  // Save to spreadsheet
+  api({
+    action: 'saveResult',
+    quizId: S.quiz.id,
+    quizTitle: S.quiz.title,
+    userName: S.userName || 'Anonymous',
+    score: correct,
+    total: n,
+    percentage: pct
+  });
+
+  const map = q => ({ A: q.OptionA, B: q.OptionB, C: q.OptionC, D: q.OptionD });
+  $('result-review').innerHTML = S.Qs.map((q, i) => {
+    const ua = S.ans[i], ca = q.CorrectAnswer, m = map(q);
+    return `
+      <div class="rev-card">
+        <div class="rev-q">${i+1}. ${esc(q.Question)}</div>
+        ${['A','B','C','D'].map(l => `
+          <div class="rev-opt${l===ca?' right':(l===ua&&l!==ca?' wrong':'')}">
+            ${l===ca?'✓':(l===ua&&l!==ca?'✗':' ')} ${l}. ${esc(m[l]||'')}
+          </div>
+        `).join('')}
+        ${q.Explanation ? `<div class="rev-exp">${esc(q.Explanation)}</div>` : ''}
+      </div>
+    `;
+  }).join('');
+  document.querySelectorAll('#result-review .rev-q, #result-review .rev-opt, #result-review .rev-exp').forEach(renderMath);
+}
+
+function reloadAndStart() {
+  // Keep name, restart same quiz
+  loadAndStartQuiz();
+}
+
+/* ══ ADMIN: SUBJECTS ══ */
+async function loadSubjects() {
+  const el = $('admin-subjects');
+  el.innerHTML = '<div class="loading">Loading…</div>';
+  const r = await api({ action: 'getSubjects' });
+  if (!r.success || !r.data?.length) { el.innerHTML = '<div class="empty">No subjects yet. Create one above.</div>'; return; }
+  el.innerHTML = r.data.map(s => `
+    <div class="li">
+      <div style="flex:1;cursor:pointer;" onclick="openSubject('${s.SubjectID}','${esc(s.SubjectName).replace(/'/g,"\\'")}')">
+        <div class="li-name">${esc(s.SubjectName)}</div>
+      </div>
+      <div class="li-actions">
+        <button class="btn ghost sm" onclick="openSubject('${s.SubjectID}','${esc(s.SubjectName).replace(/'/g,"\\'")}')">Open ▶</button>
+        <button class="btn sm" onclick="delSubject('${s.SubjectID}',event)">Del</button>
+      </div>
+    </div>
+  `).join('');
+}
+
+async function doCreateSubject() {
+  const name = $('new-subj-name').value.trim();
+  if (!name) { toast('Enter name'); return; }
+  const r = await api({ action: 'createSubject', name });
+  if (r.success) { toast('Created!'); $('new-subj-name').value = ''; toggleIF('if-subj'); loadSubjects(); }
+  else toast('Error: ' + r.error);
+}
+
+async function delSubject(id, e) {
+  e.stopPropagation();
+  if (!confirm('Delete subject and all its topics/quizzes?')) return;
+  await api({ action: 'deleteSubject', subjectId: id });
+  toast('Deleted'); loadSubjects();
+}
+
+function openSubject(id, name) {
+  S.subject = { id, name };
+  $('ctx-subj').textContent = 'Subject: ' + name;
+  show('admin-topics'); loadTopics();
+}
+
+/* ══ ADMIN: TOPICS ══ */
+async function loadTopics() {
+  const el = $('admin-topics');
+  el.innerHTML = '<div class="loading">Loading…</div>';
+  const r = await api({ action: 'getTopics', subjectId: S.subject.id });
+  if (!r.success || !r.data?.length) { el.innerHTML = '<div class="empty">No topics yet. Create one above.</div>'; return; }
+  el.innerHTML = r.data.map(t => `
+    <div class="li">
+      <div style="flex:1;cursor:pointer;" onclick="openTopic('${t.TopicID}','${esc(t.TopicName).replace(/'/g,"\\'")}')">
+        <div class="li-name">${esc(t.TopicName)}</div>
+      </div>
+      <div class="li-actions">
+        <button class="btn ghost sm" onclick="openTopic('${t.TopicID}','${esc(t.TopicName).replace(/'/g,"\\'")}')">Open ▶</button>
+        <button class="btn sm" onclick="delTopic('${t.TopicID}',event)">Del</button>
+      </div>
+    </div>
+  `).join('');
+}
+
+async function doCreateTopic() {
+  const name = $('new-topic-name').value.trim();
+  if (!name) { toast('Enter name'); return; }
+  const r = await api({ action: 'createTopic', subjectId: S.subject.id, name });
+  if (r.success) { toast('Created!'); $('new-topic-name').value = ''; toggleIF('if-topic'); loadTopics(); }
+  else toast('Error: ' + r.error);
+}
+
+async function delTopic(id, e) {
+  e.stopPropagation();
+  if (!confirm('Delete topic and all its quizzes?')) return;
+  await api({ action: 'deleteTopic', topicId: id });
+  toast('Deleted'); loadTopics();
+}
+
+function openTopic(id, name) {
+  S.topic = { id, name };
+  $('ctx-topic').textContent = `${S.subject.name} › ${name}`;
+  show('admin-quizzes'); loadQuizzes();
+}
+
+/* ══ ADMIN: QUIZZES ══ */
+async function loadQuizzes() {
+  const el = $('admin-quizzes');
+  el.innerHTML = '<div class="loading">Loading…</div>';
+  const r = await api({ action: 'getQuizzesByTopic', topicId: S.topic.id });
+  if (!r.success || !r.data?.length) { el.innerHTML = '<div class="empty">No quizzes yet. Create one above.</div>'; return; }
+  el.innerHTML = r.data.map(q => {
+    const pub = String(q.IsPublic).toLowerCase() === 'true';
+    return `
+      <div class="li">
+        <div>
+          <div class="li-name">${esc(q.QuizTitle)}</div>
+          <div class="li-meta">${pub ? '● Public' : '○ Private'}${q.AccessCode ? ' · Code: ' + q.AccessCode : ''}</div>
+        </div>
+        <button class="btn sm" onclick="delQuiz('${q.QuizID}',event)">Del</button>
+      </div>
+    `;
+  }).join('');
+}
+
+async function delQuiz(id, e) {
+  e.stopPropagation();
+  if (!confirm('Delete this quiz?')) return;
+  await api({ action: 'deleteQuiz', quizId: id });
+  toast('Deleted'); loadQuizzes();
+}
+
+/* ══ CREATE QUIZ ══ */
+function cqVisChange(el) {
+  $('cq-code-row').style.display = el.value === 'false' ? 'block' : 'none';
+}
+
+function openCreateQuiz() {
+  $('cq-title').value = '';
+  $('cq-code').value  = '';
+  $('ai-text').value  = '';
+  $('ai-status').textContent = '';
+  $('ai-preview').style.display = 'none';
+  $('ai-preview-list').innerHTML = '';
+  $('manual-list').innerHTML = '';
+  $('manual-save').style.display = 'none';
+  $('cq-code-row').style.display = 'none';
+  $('cq-step1').style.display  = 'block';
+  $('cq-step2').style.display  = 'none';
+  document.querySelector('[name="cq-vis"][value="true"]').checked = true;
+  S.aiQs = []; S.pendQId = null; S.manN = 0;
+  show('create-quiz');
+}
+
+async function cqNext() {
+  const title    = $('cq-title').value.trim();
+  const isPublic = document.querySelector('[name="cq-vis"]:checked').value;
+  const code     = $('cq-code').value.trim().toUpperCase();
+  if (!title) { toast('Enter quiz title'); return; }
+  if (isPublic === 'false' && !code) { toast('Enter access code'); return; }
+  const r = await api({ action:'createQuiz', topicId:S.topic.id, subjectId:S.subject.id, title, isPublic, accessCode: isPublic==='true'?'':code });
+  if (!r.success) { toast('Error: ' + r.error); return; }
+  S.pendQId = r.data.QuizID;
+  $('cq-bar').textContent = 'Quiz: ' + title;
+  $('cq-ctx').textContent = `${S.topic.name} › ${title}`;
+  $('cq-step1').style.display = 'none';
+  $('cq-step2').style.display = 'block';
+  toast('Quiz created. Now add questions.');
+}
+
+/* ══ AI PARSER ══ */
+async function aiParse() {
+  const raw = $('ai-text').value.trim();
+  if (!raw) { toast('Paste questions first'); return; }
+  $('ai-status').textContent = 'Parsing…';
+  const prompt = `Parse the following text into quiz questions.
+Return ONLY a raw JSON array (no markdown, no code fences, just pure JSON starting with [ ).
+Each object must have exactly these keys:
+- "question" (string)
+- "optionA", "optionB", "optionC", "optionD" (strings)
+- "correctAnswer" (exactly "A", "B", "C", or "D")
+- "explanation" (string, "" if not given)
+
+Text:
+${raw}`;
+  try {
+    const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + GROQ_KEY },
+      body: JSON.stringify({ model: 'llama-3.3-70b-versatile', messages: [{ role:'user', content:prompt }], temperature:0.1, max_tokens:4096 })
+    });
+    const d = await res.json();
+    if (d.error) { $('ai-status').textContent = 'AI error: ' + d.error.message; return; }
+    let txt = d.choices[0].message.content.trim().replace(/```json|```/g,'').trim();
+    const qs = JSON.parse(txt);
+    if (!Array.isArray(qs) || !qs.length) { $('ai-status').textContent = 'No questions found'; return; }
+    S.aiQs = qs;
+    $('ai-status').textContent = '';
+    renderAIPreview();
+  } catch(e) { $('ai-status').textContent = 'Failed: ' + e.message; }
+}
+
+function renderAIPreview() {
+  $('ai-count').textContent = S.aiQs.length;
+  $('ai-preview-list').innerHTML = S.aiQs.map((q, i) => `
+    <div class="q-preview">
+      <div class="q-preview-q">${i+1}. ${esc(q.question)}</div>
+      <div class="q-preview-opts">A. ${esc(q.optionA)} &nbsp; B. ${esc(q.optionB)}<br>C. ${esc(q.optionC)} &nbsp; D. ${esc(q.optionD)}</div>
+      <div class="q-preview-ans">✓ Answer: ${q.correctAnswer}</div>
+      ${q.explanation ? `<div style="font-size:.75rem;color:#555;margin-top:3px;">${esc(q.explanation)}</div>` : ''}
+    </div>
+  `).join('');
+  $('ai-preview').style.display = 'block';
+}
+
+function aiClear() {
+  S.aiQs = [];
+  $('ai-text').value = '';
+  $('ai-status').textContent = '';
+  $('ai-preview').style.display = 'none';
+}
+
+async function saveAIQs() {
+  if (!S.aiQs.length || !S.pendQId) { toast('Nothing to save'); return; }
+  toast('Saving…');
+  const r = await apiBatch(S.pendQId, S.aiQs);
+  if (r.success) { toast(`${r.count} questions saved!`); aiClear(); show('admin-quizzes'); loadQuizzes(); }
+  else toast('Error: ' + r.error);
+}
+
+/* ══ MANUAL QUESTIONS ══ */
+function addManualQ() {
+  S.manN++;
+  const n = S.manN;
+  const div = document.createElement('div');
+  div.id = 'mq-' + n;
+  div.style.cssText = 'border:1px solid #000;padding:12px;margin-bottom:10px;';
+  div.innerHTML = `
+    <div style="font-size:.7rem;letter-spacing:2px;text-transform:uppercase;color:#888;margin-bottom:8px;">Question ${n}</div>
+    <div class="fg"><input class="inp" placeholder="Question text" id="mq-q-${n}"></div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px;">
+      <input class="inp" placeholder="A. Option" id="mq-a-${n}">
+      <input class="inp" placeholder="B. Option" id="mq-b-${n}">
+      <input class="inp" placeholder="C. Option" id="mq-c-${n}">
+      <input class="inp" placeholder="D. Option" id="mq-d-${n}">
+    </div>
+    <div style="display:flex;gap:8px;align-items:center;">
+      <select class="sel" id="mq-ans-${n}" style="width:auto;">
+        <option value="">Answer</option>
+        <option>A</option><option>B</option><option>C</option><option>D</option>
+      </select>
+      <input class="inp" style="flex:1;" placeholder="Explanation (optional)" id="mq-exp-${n}">
+    </div>
+  `;
+  $('manual-list').appendChild(div);
+  $('manual-save').style.display = 'block';
+}
+
+async function saveManualQs() {
+  const qs = [];
+  for (let i = 1; i <= S.manN; i++) {
+    if (!$('mq-' + i)) continue;
+    const q=$(`mq-q-${i}`)?.value.trim(), a=$(`mq-a-${i}`)?.value.trim(),
+          b=$(`mq-b-${i}`)?.value.trim(), c=$(`mq-c-${i}`)?.value.trim(),
+          d=$(`mq-d-${i}`)?.value.trim(), ans=$(`mq-ans-${i}`)?.value,
+          exp=$(`mq-exp-${i}`)?.value.trim()||'';
+    if (q && a && b && c && d && ans)
+      qs.push({ question:q, optionA:a, optionB:b, optionC:c, optionD:d, correctAnswer:ans, explanation:exp });
+  }
+  if (!qs.length) { toast('No complete questions'); return; }
+  toast('Saving…');
+  const r = await apiBatch(S.pendQId, qs);
+  if (r.success) { toast(`${r.count} questions saved!`); show('admin-quizzes'); loadQuizzes(); }
+  else toast('Error: ' + r.error);
+}
+</script>
+</body>
+</html>
