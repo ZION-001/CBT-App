@@ -654,9 +654,9 @@ textarea.inp{min-height:160px;resize:vertical;}
 
       <!-- AI Parser -->
       <div class="ai-box">
-        <div class="ai-box-title">🤖 AI Question Parser</div>
-        <div style="font-size:.75rem;color:#666;line-height:1.5;margin-bottom:10px;">
-          Paste questions in any format. The AI will structure them automatically.
+        <div class="ai-box-title">AI Question Parser</div>
+        <div style="font-size:.75rem;color:var(--text-secondary);line-height:1.5;margin-bottom:10px;">
+          Paste questions in any format. The AI structures them automatically.
         </div>
         <textarea class="inp" id="ai-text" placeholder="Example:
 1. What is 2+2?
@@ -667,30 +667,88 @@ Answer: B. Basic arithmetic.
 A) Lagos  B) Abuja  C) Kano  D) PH
 Ans: B"></textarea>
         <div style="display:flex;align-items:center;gap:10px;margin-top:10px;">
-          <button class="btn sm" onclick="aiParse()">Parse with AI</button>
-          <span id="ai-status" style="font-size:.75rem;color:#555;"></span>
+          <button class="btn sm" onclick="aiParseToPreview()">Parse with AI</button>
+          <span id="ai-status" style="font-size:.75rem;color:var(--text-muted);"></span>
         </div>
-      </div>
-
-      <!-- AI Preview -->
-      <div id="ai-preview" style="display:none;">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
-          <span style="font-size:.75rem;font-weight:bold;letter-spacing:1px;text-transform:uppercase;">Parsed: <span id="ai-count">0</span> questions</span>
-          <button class="btn ghost sm" onclick="aiClear()">Clear</button>
-        </div>
-        <div id="ai-preview-list"></div>
-        <button class="btn full" style="margin-top:12px;" onclick="saveAIQs()">✓ Save Questions</button>
       </div>
 
       <!-- Divider -->
       <div class="divider">or add manually</div>
-      <button class="btn ghost full" onclick="addManualQ()">+ Add Question Manually</button>
+      <button class="btn ghost full" onclick="addManualToPreview()">+ Add Question Manually</button>
       <div id="manual-list" style="margin-top:12px;"></div>
-      <div id="manual-save" style="display:none;margin-top:10px;">
-        <button class="btn full" onclick="saveManualQs()">✓ Save Manual Questions</button>
+    </div>
+
+  </div>
+</div>
+
+
+<!-- ════════════ QUESTION PREVIEW & EDIT ════════════ -->
+<div id="s-q-preview" class="screen">
+  <div class="topbar">
+    <button class="back-btn" id="qprev-back-btn" onclick="qPreviewBack()">&#9664; Back</button>
+    <span class="topbar-title">Review Questions</span>
+    <span></span>
+  </div>
+  <div class="admin-bar">Admin Mode</div>
+  <div class="ctx-bar" id="qprev-ctx"></div>
+
+  <!-- Summary bar -->
+  <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 18px;background:var(--card);border-bottom:1px solid var(--border);">
+    <div style="font-size:.72rem;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--text-secondary);">
+      <span id="qprev-count">0</span> questions
+    </div>
+    <button class="btn sm" onclick="addQFromPreview()">+ Add More</button>
+  </div>
+
+  <div class="page" id="qprev-list"></div>
+
+  <!-- Sticky save bar -->
+  <div style="padding:14px 18px;background:var(--card);border-top:1px solid var(--border);box-shadow:0 -4px 16px rgba(13,27,110,.08);">
+    <button class="btn full" id="qprev-save-btn" onclick="saveAllQuestions()">Save All Questions</button>
+    <div id="qprev-save-status" style="text-align:center;font-size:.72rem;color:var(--text-muted);margin-top:8px;"></div>
+  </div>
+</div>
+
+<!-- ════════════ EDIT SINGLE QUESTION ════════════ -->
+<div id="s-edit-q" class="screen">
+  <div class="topbar">
+    <button class="back-btn" onclick="closeEditQ()">&#9664; Back</button>
+    <span class="topbar-title">Edit Question</span>
+    <span></span>
+  </div>
+  <div class="admin-bar">Admin Mode</div>
+  <div class="page">
+    <div class="fg">
+      <label class="lbl">Question Type</label>
+      <div style="display:flex;gap:14px;margin-bottom:4px;">
+        <label class="radio-lbl"><input type="radio" name="eq-type" value="mcq" onchange="toggleEditType('mcq')"> MCQ</label>
+        <label class="radio-lbl"><input type="radio" name="eq-type" value="theory" onchange="toggleEditType('theory')"> Theory</label>
+      </div>
+    </div>
+    <div class="fg"><label class="lbl">Question Text</label><textarea class="inp" id="eq-question" style="min-height:90px;"></textarea></div>
+
+    <div id="eq-mcq-section">
+      <div class="step-hdr">Options</div>
+      <div id="eq-opts-list" style="display:flex;flex-direction:column;gap:8px;margin-bottom:10px;"></div>
+      <button class="btn ghost sm" onclick="eqAddOption()" id="eq-add-opt-btn" style="margin-bottom:14px;">+ Add Option</button>
+      <div class="fg">
+        <label class="lbl">Correct Answer</label>
+        <select class="sel" id="eq-correct"></select>
       </div>
     </div>
 
+    <div id="eq-theory-section" style="display:none;">
+      <div class="fg"><label class="lbl">Model Answer / Key Points</label><textarea class="inp" id="eq-model-ans" style="min-height:80px;"></textarea></div>
+    </div>
+
+    <div class="fg"><label class="lbl">Explanation</label><textarea class="inp" id="eq-explanation" style="min-height:70px;"></textarea></div>
+
+    <div id="eq-img-wrap" style="margin-bottom:16px;"></div>
+
+    <div style="display:flex;gap:10px;">
+      <button class="btn full" onclick="saveEditQ()">Save Changes</button>
+      <button class="btn danger sm" onclick="deleteEditQ()">Delete</button>
+    </div>
   </div>
 </div>
 
@@ -782,7 +840,10 @@ const S = {
   Qs: [], ans: [], qi: 0,
   aiQs: [], pendQId: null, manN: 0,
   manImages: {},
-  userName: null
+  userName: null,
+  pendingQs: [],    // unified question staging area
+  editQIdx: -1,
+  editQMode: 'new'  // 'new' | 'existing'
 };
 
 /* ══ Utils ══ */
@@ -1028,13 +1089,23 @@ function renderQ() {
   renderMath($('q-text'));
   $('q-img').innerHTML = q.ImageURL ? `<img src="${esc(q.ImageURL)}" loading="lazy" style="max-width:100%;border-radius:8px;border:1.5px solid var(--border);margin-bottom:16px;display:block;">` : '';
   $('q-prog').style.width    = `${(S.qi + 1) / n * 100}%`;
-  const opts = [q.OptionA, q.OptionB, q.OptionC, q.OptionD];
-  $('q-opts').innerHTML = ['A','B','C','D'].map((l, i) => `
-    <div class="opt${S.ans[S.qi]===l?' sel':''}" onclick="pickAns('${l}')">
-      <span class="opt-ltr">${l}.</span>
-      <span class="opt-txt">${esc(opts[i])}</span>
-    </div>
-  `).join('');
+  const LETTERS = 'ABCDEFGHIJ';
+  const isTheory = q.QuestionType === 'theory' || q.CorrectAnswer === 'THEORY';
+  if (isTheory) {
+    $('q-opts').innerHTML = `
+      <div style="padding:14px;border:1.5px dashed var(--blue-bright);border-radius:var(--radius);background:var(--blue-glass);">
+        <div style="font-size:.65rem;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--blue-mid);margin-bottom:10px;">Theory Question — Write your answer below</div>
+        <textarea class="inp" id="theory-ans-${S.qi}" placeholder="Type your answer here..." style="min-height:110px;" onInput="S.ans[S.qi]=this.value">${S.ans[S.qi]||''}</textarea>
+      </div>`;
+  } else {
+    const allOpts = LETTERS.split('').map((l,i) => ({ l, v: q['Option'+l] })).filter(o => o.v && o.v.trim());
+    $('q-opts').innerHTML = allOpts.map(({l, v}) => `
+      <div class="opt${S.ans[S.qi]===l?' sel':''}" onclick="pickAns('${l}')">
+        <span class="opt-ltr">${l}.</span>
+        <span class="opt-txt">${esc(v)}</span>
+      </div>
+    `).join('');
+  }
   document.querySelectorAll('#q-opts .opt-txt').forEach(renderMath);
   $('q-prev').style.visibility = S.qi === 0 ? 'hidden' : 'visible';
   $('q-next').textContent      = S.qi === n - 1 ? 'Submit' : 'Next ▶';
@@ -1048,12 +1119,12 @@ function jumpQ(i) { S.qi = i; renderQ(); }
 
 function pickAns(l) {
   S.ans[S.qi] = l;
-  document.querySelectorAll('.opt').forEach((el, i) => {
-    el.classList.toggle('sel', ['A','B','C','D'][i] === l);
+  document.querySelectorAll('#q-opts .opt').forEach(el => {
+    const elLtr = el.querySelector('.opt-ltr').textContent.replace('.','').trim();
+    el.classList.toggle('sel', elLtr === l);
   });
-  // refresh grid to show answered state
   document.querySelectorAll('.q-grid-btn').forEach((el, i) => {
-    el.classList.toggle('answered', S.ans[i] !== null);
+    el.classList.toggle('answered', S.ans[i] !== null && S.ans[i] !== '');
   });
 }
 
@@ -1066,13 +1137,60 @@ function nextQ() {
   showResults();
 }
 
+
+/* ══ AI THEORY MARKING ══ */
+async function markTheoryWithAI(i) {
+  const q = S.Qs[i];
+  const studentAns = S.ans[i] || '';
+  const modelAns = q.CorrectAnswer !== 'THEORY' ? q.CorrectAnswer : '';
+  const box = document.getElementById('ai-mark-' + i);
+  if (!box) return;
+  const prompt = `You are a teacher marking a student's theory answer.
+
+Question: ${q.Question}
+${modelAns ? 'Model Answer / Key Points: ' + modelAns : ''}
+${q.Explanation ? 'Additional Context: ' + q.Explanation : ''}
+Student Answer: ${studentAns || '(no answer given)'}
+
+Respond in this exact JSON format (no markdown):
+{"score":"X/10","verdict":"Excellent|Good|Partial|Poor|No Answer","feedback":"2-3 sentence feedback","keyPoints":"brief bullet points of what a good answer should include"}`;
+
+  try {
+    const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + GROQ_KEY },
+      body: JSON.stringify({ model: 'llama-3.3-70b-versatile', messages: [{ role:'user', content:prompt }], temperature:0.2, max_tokens:512 })
+    });
+    const d = await res.json();
+    if (d.error) { box.innerHTML = '<span style="color:var(--red)">AI error: ' + d.error.message + '</span>'; return; }
+    let txt = d.choices[0].message.content.trim().replace(/\`\`\`json|\`\`\`/g,'').trim();
+    const result = JSON.parse(txt);
+    const verdictColor = { Excellent:'var(--green)', Good:'var(--green-dim)', Partial:'var(--yellow)', Poor:'var(--red)', 'No Answer':'var(--text-muted)' };
+    const vc = verdictColor[result.verdict] || 'var(--text-secondary)';
+    box.innerHTML = \`
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">
+        <span style="font-family:'Sora',sans-serif;font-size:1.1rem;font-weight:800;color:\${vc};">\${result.score}</span>
+        <span style="font-size:.68rem;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;padding:3px 10px;border-radius:50px;background:\${vc};color:#fff;">\${result.verdict}</span>
+      </div>
+      <div style="font-size:.82rem;line-height:1.6;color:var(--text-primary);margin-bottom:6px;">\${result.feedback}</div>
+      \${result.keyPoints ? \`<div style="font-size:.75rem;color:var(--text-secondary);border-top:1px dashed var(--border);padding-top:6px;margin-top:4px;"><strong>Key points:</strong> \${result.keyPoints}</div>\` : ''}
+    \`;
+  } catch(e) {
+    box.innerHTML = '<span style="color:var(--red)">Could not mark: ' + e.message + '</span>';
+  }
+}
+
 /* ══ RESULTS ══ */
 async function showResults() {
   clearInterval(S.timerInt);
   show('results');
   const n = S.Qs.length;
-  let correct = 0;
-  S.Qs.forEach((q, i) => { if (S.ans[i] === q.CorrectAnswer) correct++; });
+  let correct = 0, theoryPending = [];
+  S.Qs.forEach((q, i) => {
+    const isTheory = q.QuestionType === 'theory' || q.CorrectAnswer === 'THEORY';
+    if (!isTheory && S.ans[i] === q.CorrectAnswer) correct++;
+    if (isTheory && S.ans[i]) theoryPending.push(i);
+  });
   const pct = Math.round(correct / n * 100);
   const pm  = S.quiz.passMark || 0;
   const passFailHtml = pm > 0
@@ -1099,28 +1217,433 @@ async function showResults() {
     percentage: pct
   });
 
-  const map = q => ({ A: q.OptionA, B: q.OptionB, C: q.OptionC, D: q.OptionD });
+  const LETTERS = 'ABCDEFGHIJ';
+  const map = q => {
+    const m = {};
+    LETTERS.split('').forEach(l => { if (q['Option'+l]) m[l] = q['Option'+l]; });
+    return m;
+  };
   $('result-review').innerHTML = S.Qs.map((q, i) => {
     const ua = S.ans[i], ca = q.CorrectAnswer, m = map(q);
+    const isTheory = q.QuestionType === 'theory' || ca === 'THEORY';
+    let bodyHtml;
+    if (isTheory) {
+      const answered = ua && ua.trim();
+      bodyHtml = `
+        <div style="font-size:.7rem;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--blue-mid);margin-bottom:6px;">Theory Question</div>
+        ${answered
+          ? `<div style="font-size:.82rem;padding:8px;background:var(--surface2);border-radius:6px;margin-bottom:6px;border-left:3px solid var(--blue-bright);">
+               <strong>Your answer:</strong> ${esc(ua)}
+             </div>`
+          : `<div style="font-size:.8rem;color:var(--red);margin-bottom:6px;">No answer provided</div>`}
+        <div id="ai-mark-${i}" style="font-size:.78rem;padding:8px;border-radius:6px;background:var(--blue-glass);border:1px dashed var(--blue-bright);">
+          <span style="color:var(--text-muted);">AI marking in progress...</span>
+        </div>`;
+    } else {
+      bodyHtml = Object.keys(m).map(l => `
+        <div class="rev-opt${l===ca?' right':(l===ua&&l!==ca?' wrong':'')}">
+          ${l===ca?'✓':(l===ua&&l!==ca?'✗':' ')} ${l}. ${esc(m[l]||'')}
+        </div>`).join('');
+    }
     return `
       <div class="rev-card">
         <div class="rev-q">${i+1}. ${esc(q.Question)}</div>
         ${q.ImageURL ? `<img src="${esc(q.ImageURL)}" loading="lazy" style="max-width:100%;border-radius:7px;border:1px solid var(--border);margin-bottom:8px;display:block;">` : ''}
-        ${['A','B','C','D'].map(l => `
-          <div class="rev-opt${l===ca?' right':(l===ua&&l!==ca?' wrong':'')}">
-            ${l===ca?'✓':(l===ua&&l!==ca?'✗':' ')} ${l}. ${esc(m[l]||'')}
-          </div>
-        `).join('')}
+        ${bodyHtml}
         ${q.Explanation ? `<div class="rev-exp">${esc(q.Explanation)}</div>` : ''}
-      </div>
-    `;
+      </div>`;
   }).join('');
   document.querySelectorAll('#result-review .rev-q, #result-review .rev-opt, #result-review .rev-exp').forEach(renderMath);
+  // AI-mark theory questions asynchronously
+  theoryPending.forEach(i => markTheoryWithAI(i));
 }
 
 function reloadAndStart() {
   // Keep name, restart same quiz
   loadAndStartQuiz();
+}
+
+
+/* ══════════════════════════════════════════════════════
+   UNIFIED QUESTION PREVIEW / EDIT SYSTEM
+   S.pendingQs  = array of question objects being built
+   S.editQIdx   = index into pendingQs being edited
+   S.editQMode  = 'new' | 'existing'  (existing = already saved, edit via updateQuestion)
+   S.pendQId    = quiz ID
+══════════════════════════════════════════════════════ */
+
+/* ── Go to preview screen with current pending questions ── */
+function openPreviewScreen(ctx) {
+  $('qprev-ctx').textContent = ctx || S.quiz && S.quiz.title || '';
+  renderPreviewList();
+  show('q-preview');
+}
+
+function renderPreviewList() {
+  const LETTERS = 'ABCDEFGHIJ';
+  const el = $('qprev-list');
+  $('qprev-count').textContent = S.pendingQs.length;
+
+  if (!S.pendingQs.length) {
+    el.innerHTML = '<div class="empty">No questions yet. Use AI parser or add manually.</div>';
+    return;
+  }
+
+  el.innerHTML = S.pendingQs.map((q, i) => {
+    const isTheory = q.questionType === 'theory' || q.correctAnswer === 'THEORY';
+    const badge = isTheory
+      ? `<span style="font-size:.6rem;font-weight:700;letter-spacing:1.5px;padding:2px 8px;border-radius:50px;background:var(--blue-light);color:var(--blue-mid);text-transform:uppercase;">Theory</span>`
+      : `<span style="font-size:.6rem;font-weight:700;letter-spacing:1.5px;padding:2px 8px;border-radius:50px;background:var(--surface2);color:var(--text-secondary);text-transform:uppercase;">MCQ · ${q.options ? q.options.length : 4} opts</span>`;
+
+    const preview = isTheory
+      ? `<div style="font-size:.75rem;color:var(--text-secondary);margin-top:4px;">Model: ${esc((q.correctAnswer||q.modelAnswer||'').slice(0,60))}${(q.correctAnswer||'').length>60?'…':''}</div>`
+      : `<div style="font-size:.75rem;color:var(--text-secondary);margin-top:4px;">${(q.options||[]).slice(0,3).map((o,idx)=>LETTERS[idx]+'. '+esc(o.slice(0,20))).join(' · ')}${(q.options||[]).length>3?' …':''}</div>`;
+
+    const expBadge = q.explanation
+      ? `<span style="font-size:.6rem;color:var(--green-dim);font-weight:600;">+ Explanation</span>`
+      : `<span style="font-size:.6rem;color:var(--red);font-weight:600;">No explanation</span>`;
+
+    return `
+      <div class="li" style="flex-direction:column;align-items:stretch;gap:8px;cursor:pointer;" onclick="openEditQ(${i})">
+        <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px;">
+          <div style="flex:1;">
+            <div style="display:flex;align-items:center;gap:6px;margin-bottom:5px;">
+              <span style="font-size:.65rem;font-weight:700;color:var(--text-muted);">${i+1}</span>
+              ${badge}
+              ${expBadge}
+            </div>
+            <div class="li-name" style="font-size:.85rem;line-height:1.5;">${esc(q.question)}</div>
+            ${preview}
+          </div>
+          <button class="btn ghost sm" style="flex-shrink:0;" onclick="event.stopPropagation();openEditQ(${i})">Edit</button>
+        </div>
+      </div>`;
+  }).join('');
+}
+
+/* ── Add more questions from preview page ── */
+function addQFromPreview() {
+  // Go back to create-quiz step2
+  show('create-quiz');
+  $('cq-step1').style.display = 'none';
+  $('cq-step2').style.display = 'block';
+}
+
+/* ── Open single question editor ── */
+function openEditQ(idx) {
+  S.editQIdx = idx;
+  const q = S.pendingQs[idx];
+  const isTheory = q.questionType === 'theory' || q.correctAnswer === 'THEORY';
+
+  // Set type radio
+  document.querySelectorAll('[name="eq-type"]').forEach(r => { r.checked = r.value === (isTheory ? 'theory' : 'mcq'); });
+  toggleEditType(isTheory ? 'theory' : 'mcq');
+
+  $('eq-question').value = q.question || '';
+  $('eq-explanation').value = q.explanation || '';
+
+  if (isTheory) {
+    $('eq-model-ans').value = q.modelAnswer || q.correctAnswer || '';
+  } else {
+    // Populate options
+    const opts = q.options || [];
+    renderEqOptions(opts);
+    // Set correct answer
+    const sel = $('eq-correct');
+    sel.value = q.correctAnswer || 'A';
+  }
+
+  // Image
+  renderEqImage(q.imageUrl || '');
+  show('edit-q');
+}
+
+function toggleEditType(type) {
+  $('eq-mcq-section').style.display = type === 'mcq' ? '' : 'none';
+  $('eq-theory-section').style.display = type === 'theory' ? '' : 'none';
+}
+
+const EQ_LETTERS = 'ABCDEFGHIJ';
+
+function renderEqOptions(opts) {
+  const wrap = $('eq-opts-list');
+  wrap.innerHTML = opts.map((o, i) => `
+    <div style="display:flex;gap:8px;align-items:center;">
+      <span style="font-weight:700;font-size:.8rem;width:18px;color:var(--blue-mid);">${EQ_LETTERS[i]}.</span>
+      <input class="inp" style="flex:1;" value="${esc(o)}" id="eq-opt-${i}" placeholder="Option ${EQ_LETTERS[i]}">
+      <button class="btn danger sm" style="padding:6px 10px;" onclick="eqRemoveOption(${i})">&#10005;</button>
+    </div>`).join('');
+  // Update correct answer select
+  const sel = $('eq-correct');
+  const prev = sel.value;
+  sel.innerHTML = opts.map((_, i) => `<option value="${EQ_LETTERS[i]}">${EQ_LETTERS[i]}</option>`).join('');
+  if (prev && sel.querySelector(`option[value="${prev}"]`)) sel.value = prev;
+  // Show/hide add button
+  $('eq-add-opt-btn').style.display = opts.length >= 10 ? 'none' : '';
+}
+
+function eqAddOption() {
+  const q = S.pendingQs[S.editQIdx];
+  const opts = getEqCurrentOptions();
+  if (opts.length >= 10) return;
+  opts.push('');
+  renderEqOptions(opts);
+  // Focus new input
+  const newIdx = opts.length - 1;
+  setTimeout(() => { const el = $(`eq-opt-${newIdx}`); if (el) el.focus(); }, 50);
+}
+
+function eqRemoveOption(idx) {
+  const opts = getEqCurrentOptions();
+  if (opts.length <= 2) { toast('Minimum 2 options'); return; }
+  opts.splice(idx, 1);
+  renderEqOptions(opts);
+}
+
+function getEqCurrentOptions() {
+  const opts = [];
+  let i = 0;
+  while ($('eq-opt-' + i)) { opts.push($('eq-opt-' + i).value); i++; }
+  return opts;
+}
+
+function renderEqImage(url) {
+  const wrap = $('eq-img-wrap');
+  if (url) {
+    wrap.innerHTML = `
+      <label class="lbl">Image</label>
+      <img src="${esc(url)}" style="max-width:100%;border-radius:8px;border:1px solid var(--border);margin-bottom:8px;display:block;">
+      <button class="btn ghost sm" onclick="eqRemoveImage()">Remove Image</button>`;
+  } else {
+    wrap.innerHTML = `
+      <label class="lbl">Image (optional)</label>
+      <input type="file" accept="image/*" id="eq-img-input" style="display:none" onchange="eqUploadImage(this)">
+      <button class="btn ghost sm" onclick="$('eq-img-input').click()">+ Attach Image</button>
+      <span id="eq-img-status" style="font-size:.75rem;color:var(--text-muted);margin-left:8px;"></span>`;
+  }
+}
+
+async function eqUploadImage(inputEl) {
+  const file = inputEl.files[0]; if (!file) return;
+  $('eq-img-status').textContent = 'Uploading...';
+  const r = await uploadQuestionImage(file);
+  if (!r.success) { $('eq-img-status').textContent = 'Failed'; return; }
+  S.pendingQs[S.editQIdx].imageUrl = r.data.url;
+  renderEqImage(r.data.url);
+}
+
+function eqRemoveImage() {
+  S.pendingQs[S.editQIdx].imageUrl = '';
+  renderEqImage('');
+}
+
+function saveEditQ() {
+  const idx = S.editQIdx;
+  const q = S.pendingQs[idx];
+  const typeEl = document.querySelector('[name="eq-type"]:checked');
+  const isTheory = typeEl && typeEl.value === 'theory';
+
+  q.question = $('eq-question').value.trim();
+  if (!q.question) { toast('Question text required'); return; }
+  q.explanation = $('eq-explanation').value.trim();
+  q.questionType = isTheory ? 'theory' : 'mcq';
+
+  if (isTheory) {
+    q.correctAnswer = 'THEORY';
+    q.modelAnswer = $('eq-model-ans').value.trim();
+    q.options = [];
+  } else {
+    const opts = getEqCurrentOptions().filter(o => o.trim());
+    if (opts.length < 2) { toast('Need at least 2 options'); return; }
+    q.options = opts;
+    q.correctAnswer = $('eq-correct').value;
+    // Also set legacy fields for compatibility
+    EQ_LETTERS.split('').forEach((l, i) => { q['option'+l] = opts[i] || ''; });
+  }
+
+  S.pendingQs[idx] = q;
+
+  // If it's an already-saved question (editing existing), update on server too
+  if (S.editQMode === 'existing' && q.QuestionID) {
+    updateQuestionOnServer(q);
+  }
+
+  show('q-preview');
+  renderPreviewList();
+  toast('Question updated');
+}
+
+function deleteEditQ() {
+  if (!confirm('Remove this question?')) return;
+  const q = S.pendingQs[S.editQIdx];
+  // If already saved, delete on server
+  if (S.editQMode === 'existing' && q.QuestionID) {
+    api({ action: 'deleteQuestion', questionId: q.QuestionID });
+  }
+  S.pendingQs.splice(S.editQIdx, 1);
+  show('q-preview');
+  renderPreviewList();
+  toast('Question removed');
+}
+
+function closeEditQ() {
+  show('q-preview');
+}
+
+async function updateQuestionOnServer(q) {
+  await api({ action: 'updateQuestion', question: JSON.stringify(q) });
+}
+
+/* ── Save ALL pending questions ── */
+async function saveAllQuestions() {
+  if (!S.pendingQs.length) { toast('No questions to save'); return; }
+  const btn = $('qprev-save-btn');
+  const status = $('qprev-save-status');
+  btn.disabled = true;
+  status.textContent = 'Saving...';
+
+  // Only save NEW questions (no QuestionID yet)
+  const toSave = S.pendingQs.filter(q => !q.QuestionID);
+  if (!toSave.length) {
+    btn.disabled = false;
+    status.textContent = '';
+    toast('All questions already saved');
+    show('admin-quizzes'); loadQuizzes();
+    return;
+  }
+
+  const LETTERS = 'ABCDEFGHIJ';
+  const mapped = toSave.map(q => {
+    const isTheory = q.questionType === 'theory' || q.correctAnswer === 'THEORY';
+    const obj = {
+      question: q.question,
+      correctAnswer: isTheory ? 'THEORY' : (q.correctAnswer || 'A'),
+      explanation: q.explanation || '',
+      imageUrl: q.imageUrl || '',
+      questionType: isTheory ? 'theory' : 'mcq',
+      modelAnswer: q.modelAnswer || ''
+    };
+    if (!isTheory && q.options) {
+      q.options.forEach((opt, i) => { if (i < 10) obj['option'+LETTERS[i]] = opt; });
+    }
+    return obj;
+  });
+
+  const r = await apiBatch(S.pendQId, mapped);
+  btn.disabled = false;
+  if (r.success) {
+    toast(r.count + ' questions saved!');
+    S.pendingQs = [];
+    status.textContent = '';
+    show('admin-quizzes'); loadQuizzes();
+  } else {
+    status.textContent = 'Error: ' + r.error;
+    toast('Save failed');
+  }
+}
+
+/* ── AI Parse → Preview ── */
+async function aiParseToPreview() {
+  const raw = $('ai-text').value.trim();
+  if (!raw) { toast('Paste questions first'); return; }
+  $('ai-status').textContent = 'Parsing…';
+  const prompt = `You are a quiz parser. Parse the following text into quiz questions.
+Return ONLY a raw JSON array (no markdown, no code fences, just pure JSON starting with [ ).
+
+Each object must have these keys:
+- "question" (string)
+- "type": either "mcq" (multiple choice) or "theory" (open/essay)
+- "options": array of option strings e.g. ["Paris","London","Rome"]. For theory use [].
+- "correctAnswer": for mcq use the LETTER "A","B"..."J" (A=options[0]). For theory put the model answer string.
+- "explanation": a clear explanation. If none given in the text, GENERATE a helpful one yourself.
+
+Rules:
+- Detect theory questions automatically (no options listed, or asks to explain/describe/discuss/define/state/write).
+- MCQ can have 2 to 10 options — include ALL options, do not truncate to 4.
+- Always provide an explanation even if you must generate it.
+
+Text:
+${raw}`;
+  try {
+    const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + GROQ_KEY },
+      body: JSON.stringify({ model: 'llama-3.3-70b-versatile', messages: [{ role:'user', content:prompt }], temperature:0.1, max_tokens:4096 })
+    });
+    const d = await res.json();
+    if (d.error) { $('ai-status').textContent = 'AI error: ' + d.error.message; return; }
+    let txt = d.choices[0].message.content.trim().replace(/```json|```/g,'').trim();
+    const qs = JSON.parse(txt);
+    if (!Array.isArray(qs) || !qs.length) { $('ai-status').textContent = 'No questions found'; return; }
+    $('ai-status').textContent = '';
+    $('ai-text').value = '';
+    // Normalize and push to pending
+    qs.forEach(q => {
+      S.pendingQs.push({
+        question: q.question,
+        questionType: q.type || 'mcq',
+        options: q.options || [],
+        correctAnswer: q.correctAnswer || 'A',
+        explanation: q.explanation || '',
+        modelAnswer: q.type === 'theory' ? q.correctAnswer : '',
+        imageUrl: ''
+      });
+    });
+    S.editQMode = 'new';
+    openPreviewScreen($('cq-ctx').textContent);
+  } catch(e) { $('ai-status').textContent = 'Failed: ' + e.message; }
+}
+
+/* ── Manual Add → Preview ── */
+function addManualToPreview() {
+  S.editQMode = 'new';
+  const newQ = { question:'', questionType:'mcq', options:['','','',''], correctAnswer:'A', explanation:'', modelAnswer:'', imageUrl:'' };
+  S.pendingQs.push(newQ);
+  S.editQIdx = S.pendingQs.length - 1;
+  openEditQ(S.editQIdx);
+}
+
+/* ── Open Questions for existing quiz (edit mode) ── */
+async function openEditQuestions(quizId, title, e) {
+  e.stopPropagation();
+  S.pendQId = quizId;
+  S.editQMode = 'existing';
+  S.pendingQs = [];
+  $('qprev-ctx').textContent = title;
+  $('qprev-save-btn').textContent = 'Save New Questions';
+  show('q-preview');
+  $('qprev-list').innerHTML = '<div class="loading">Loading questions…</div>';
+  $('qprev-count').textContent = '...';
+
+  const r = await api({ action: 'getQuestions', quizId });
+  if (!r.success) { toast('Failed to load questions'); return; }
+
+  const LETTERS = 'ABCDEFGHIJ';
+  S.pendingQs = (r.data || []).map(q => {
+    const opts = LETTERS.split('').map(l => q['Option'+l]).filter(v => v && String(v).trim());
+    return {
+      QuestionID: q.QuestionID,
+      question: q.Question,
+      questionType: q.QuestionType || (q.CorrectAnswer === 'THEORY' ? 'theory' : 'mcq'),
+      options: opts,
+      correctAnswer: q.CorrectAnswer,
+      explanation: q.Explanation || '',
+      modelAnswer: q.ModelAnswer || '',
+      imageUrl: q.ImageURL || ''
+    };
+  });
+  renderPreviewList();
+}
+
+/* ── Back from preview ── */
+function qPreviewBack() {
+  if (S.editQMode === 'existing') {
+    show('admin-quizzes');
+  } else {
+    show('create-quiz');
+    $('cq-step1').style.display = 'none';
+    $('cq-step2').style.display = 'block';
+  }
 }
 
 /* ══ ADMIN: SUBJECTS ══ */
@@ -1217,10 +1740,11 @@ async function loadQuizzes() {
           <div class="li-name">${esc(q.QuizTitle)}</div>
           <div class="li-meta">${pub ? '<span style="color:var(--green)">&#9679;</span> Public' : '<span style="color:var(--text-muted)">&#9675;</span> Private'}${q.AccessCode ? ' &middot; Code: ' + q.AccessCode : ''}${(!pub && q.TimeLimit > 0) ? ' &middot; ' + q.TimeLimit + ' min' : ''}</div>
         </div>
-        <div class="li-actions">
-          <button class="btn ghost sm" onclick="viewResults('${q.QuizID}','${esc(q.QuizTitle).replace(/'/g,"\\'")}',event)">Results</button>
-          <button class="btn ghost sm" onclick="shareQuiz('${q.QuizID}','${esc(q.QuizTitle).replace(/'/g,"\\'")}',event)">Share</button>
-          <button class="btn sm" onclick="delQuiz('${q.QuizID}',event)">Del</button>
+        <dii-actions">
+          <button class="btn ghost sm" onclick="openEditQuestions('${q.QuizID}','${esc(q.QuizTitle).replace(/\'/g,"\\'")}',event)">Questions</button>
+          <button class="btn ghost sm" onclick="viewResults('${q.QuizID}','${esc(q.QuizTitle).replace(/\'/g,"\\'")}',event)">Results</button>
+          <button class="btn ghost sm" onclick="shareQuiz('${q.QuizID}','${esc(q.QuizTitle).replace(/\'/g,"\\'")}',event)">Share</button>
+          <button class="btn danger sm" onclick="delQuiz('${q.QuizID}',event)">Del</button>
         </div>
       </div>
     `;
@@ -1312,6 +1836,8 @@ async function cqNext() {
   const r = await api({ action:'createQuiz', topicId:S.topic.id, subjectId:S.subject.id, title, isPublic, accessCode: isPublic==='true'?'':code, timeLimit, passMark });
   if (!r.success) { toast('Error: ' + r.error); return; }
   S.pendQId = r.data.QuizID;
+  S.pendingQs = [];
+  S.editQMode = 'new';
   $('cq-bar').textContent = 'Quiz: ' + title;
   $('cq-ctx').textContent = `${S.topic.name} › ${title}`;
   $('cq-step1').style.display = 'none';
@@ -1324,16 +1850,23 @@ async function aiParse() {
   const raw = $('ai-text').value.trim();
   if (!raw) { toast('Paste questions first'); return; }
   $('ai-status').textContent = 'Parsing…';
-  const prompt = `Parse the following text into quiz questions.
+  const prompt = `You are a quiz parser. Parse the following text into quiz questions.
 Return ONLY a raw JSON array (no markdown, no code fences, just pure JSON starting with [ ).
-Each object must have exactly these keys:
+
+Each object must have these keys:
 - "question" (string)
-- "optionA", "optionB", "optionC", "optionD" (strings)
-- "correctAnswer" (exactly "A", "B", "C", or "D")
-- "explanation" (string, "" if not given)
+- "type": either "mcq" (multiple choice) or "theory" (open/essay)
+- "options": array of option strings e.g. ["Paris","London","Rome"]. For theory use [].
+- "correctAnswer": for mcq use the LETTER "A","B"..."J" (A=options[0]). For theory put the model answer string.
+- "explanation": a clear explanation. If none given in the text, GENERATE a helpful one yourself.
+
+Rules:
+- Detect theory questions automatically (no options listed, or asks to explain/describe/discuss/define/state/write).
+- MCQ can have 2 to 10 options — include ALL options, do not truncate to 4.
+- Always provide an explanation even if you must generate it.
 
 Text:
-${raw}`;
+\${raw}`;
   try {
     const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
       method: 'POST',
@@ -1353,23 +1886,32 @@ ${raw}`;
 
 function renderAIPreview() {
   $('ai-count').textContent = S.aiQs.length;
-  $('ai-preview-list').innerHTML = S.aiQs.map((q, i) => `
+  const LETTERS = 'ABCDEFGHIJ';
+  $('ai-preview-list').innerHTML = S.aiQs.map((q, i) => {
+    const isTheory = q.type === 'theory' || !q.options || q.options.length === 0;
+    const optsHtml = isTheory
+      ? `<div style="font-size:.72rem;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--blue-mid);padding:4px 8px;background:var(--blue-light);border-radius:4px;display:inline-block;margin-bottom:6px;">Theory / Open-Ended</div>`
+      : q.options.map((o, idx) => `<div class="q-preview-opts">${LETTERS[idx]}. ${esc(o)}</div>`).join('');
+    const ansHtml = isTheory
+      ? `<div class="q-preview-ans" style="color:var(--blue-mid);">Model Answer: ${esc(q.correctAnswer)}</div>`
+      : `<div class="q-preview-ans">Correct: ${q.correctAnswer}</div>`;
+    return \`
     <div class="q-preview">
-      <div class="q-preview-q">${i+1}. ${esc(q.question)}</div>
-      <div class="q-preview-opts">A. ${esc(q.optionA)} &nbsp; B. ${esc(q.optionB)}<br>C. ${esc(q.optionC)} &nbsp; D. ${esc(q.optionD)}</div>
-      <div class="q-preview-ans">✓ Answer: ${q.correctAnswer}</div>
-      ${q.explanation ? `<div style="font-size:.75rem;color:#555;margin-top:3px;">${esc(q.explanation)}</div>` : ''}
-      <div class="img-attach" id="img-attach-ai-${i}" style="margin-top:8px;">
-        ${q.imageUrl
-          ? `<img src="${esc(q.imageUrl)}" style="max-width:100%;max-height:140px;border:1px solid #000;display:block;margin-bottom:6px;">
-             <button class="btn ghost sm" onclick="removeImage('ai',${i})">Remove Image</button>`
-          : `<input type="file" accept="image/*" id="img-input-ai-${i}" style="display:none" onchange="attachImage('ai',${i},this)">
-             <button class="btn ghost sm" onclick="document.getElementById('img-input-ai-${i}').click()">+ Image</button>
-             <span id="img-status-ai-${i}" style="font-size:.75rem;color:#555;margin-left:6px;"></span>`
+      <div class="q-preview-q">\${i+1}. \${esc(q.question)}</div>
+      \${optsHtml}
+      \${ansHtml}
+      \${q.explanation ? \`<div style="font-size:.75rem;color:var(--text-secondary);margin-top:4px;padding:6px 8px;background:var(--surface2);border-radius:5px;">\${esc(q.explanation)}</div>\` : ''}
+      <div class="img-attach" id="img-attach-ai-\${i}" style="margin-top:8px;">
+        \${q.imageUrl
+          ? \`<img src="\${esc(q.imageUrl)}" style="max-width:100%;max-height:140px;border:1px solid var(--border);border-radius:6px;display:block;margin-bottom:6px;">
+             <button class="btn ghost sm" onclick="removeImage('ai',\${i})">Remove Image</button>\`
+          : \`<input type="file" accept="image/*" id="img-input-ai-\${i}" style="display:none" onchange="attachImage('ai',\${i},this)">
+             <button class="btn ghost sm" onclick="document.getElementById('img-input-ai-\${i}').click()">+ Image</button>
+             <span id="img-status-ai-\${i}" style="font-size:.75rem;color:var(--text-muted);margin-left:6px;"></span>\`
         }
       </div>
-    </div>
-  `).join('');
+    </div>\`;
+  }).join('');
   $('ai-preview').style.display = 'block';
 }
 
@@ -1408,8 +1950,23 @@ function aiClear() {
 
 async function saveAIQs() {
   if (!S.aiQs.length || !S.pendQId) { toast('Nothing to save'); return; }
+  const LETTERS = 'ABCDEFGHIJ';
+  const mapped = S.aiQs.map(q => {
+    const isTheory = q.type === 'theory' || !q.options || q.options.length === 0;
+    const obj = {
+      question: q.question,
+      correctAnswer: isTheory ? 'THEORY' : (q.correctAnswer || 'A'),
+      explanation: q.explanation || '',
+      imageUrl: q.imageUrl || '',
+      questionType: isTheory ? 'theory' : 'mcq'
+    };
+    if (!isTheory && q.options) {
+      q.options.forEach((opt, i) => { if (i < 10) obj['option' + LETTERS[i]] = opt; });
+    }
+    return obj;
+  });
   toast('Saving…');
-  const r = await apiBatch(S.pendQId, S.aiQs);
+  const r = await apiBatch(S.pendQId, mapped);
   if (r.success) { toast(`${r.count} questions saved!`); aiClear(); show('admin-quizzes'); loadQuizzes(); }
   else toast('Error: ' + r.error);
 }
@@ -1422,21 +1979,34 @@ function addManualQ() {
   div.id = 'mq-' + n;
   div.style.cssText = 'border:1.5px solid var(--border);border-radius:var(--radius);padding:14px;margin-bottom:12px;background:var(--card);box-shadow:var(--shadow-sm);';
   div.innerHTML = `
-    <div style="font-size:.7rem;letter-spacing:2px;text-transform:uppercase;color:#888;margin-bottom:8px;">Question ${n}</div>
+    <div style="font-size:.7rem;letter-spacing:2px;text-transform:uppercase;color:var(--text-muted);margin-bottom:8px;">Question ${n}</div>
+    <div class="fg">
+      <label class="lbl">Type</label>
+      <div style="display:flex;gap:10px;margin-bottom:10px;">
+        <label class="radio-lbl"><input type="radio" name="mq-type-${n}" value="mcq" checked onchange="toggleManualType(${n})"> MCQ</label>
+        <label class="radio-lbl"><input type="radio" name="mq-type-${n}" value="theory" onchange="toggleManualType(${n})"> Theory</label>
+      </div>
+    </div>
     <div class="fg"><input class="inp" placeholder="Question text" id="mq-q-${n}"></div>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px;">
-      <input class="inp" placeholder="A. Option" id="mq-a-${n}">
-      <input class="inp" placeholder="B. Option" id="mq-b-${n}">
-      <input class="inp" placeholder="C. Option" id="mq-c-${n}">
-      <input class="inp" placeholder="D. Option" id="mq-d-${n}">
+    <div id="mq-opts-wrap-${n}">
+      <div id="mq-opts-${n}" style="display:flex;flex-direction:column;gap:8px;margin-bottom:10px;">
+        <input class="inp" placeholder="A. Option" id="mq-opt-A-${n}">
+        <input class="inp" placeholder="B. Option" id="mq-opt-B-${n}">
+        <input class="inp" placeholder="C. Option" id="mq-opt-C-${n}">
+        <input class="inp" placeholder="D. Option" id="mq-opt-D-${n}">
+      </div>
+      <button class="btn ghost sm" onclick="addManualOption(${n})" id="mq-addopt-${n}" style="margin-bottom:10px;">+ Add Option</button>
+      <div style="display:flex;gap:8px;align-items:center;margin-bottom:10px;">
+        <select class="sel" id="mq-ans-${n}" style="width:auto;">
+          <option value="">Correct Answer</option>
+          <option>A</option><option>B</option><option>C</option><option>D</option>
+        </select>
+      </div>
     </div>
-    <div style="display:flex;gap:8px;align-items:center;margin-bottom:10px;">
-      <select class="sel" id="mq-ans-${n}" style="width:auto;">
-        <option value="">Answer</option>
-        <option>A</option><option>B</option><option>C</option><option>D</option>
-      </select>
-      <input class="inp" style="flex:1;" placeholder="Explanation (optional)" id="mq-exp-${n}">
+    <div id="mq-theory-wrap-${n}" style="display:none;">
+      <div class="fg"><textarea class="inp" id="mq-model-ans-${n}" placeholder="Model answer / key points" style="min-height:80px;"></textarea></div>
     </div>
+    <input class="inp" style="margin-bottom:10px;" placeholder="Explanation (optional)" id="mq-exp-${n}">
     <div id="img-attach-man-${n}"></div>
   `;
   $('manual-list').appendChild(div);
@@ -1444,6 +2014,29 @@ function addManualQ() {
   renderManualImageBox(n);
 }
 
+
+const MAN_OPT_LETTERS = 'ABCDEFGHIJ';
+
+function toggleManualType(n) {
+  const type = document.querySelector(`[name="mq-type-${n}"]:checked`).value;
+  document.getElementById('mq-opts-wrap-' + n).style.display = type === 'mcq' ? '' : 'none';
+  document.getElementById('mq-theory-wrap-' + n).style.display = type === 'theory' ? '' : 'none';
+}
+
+function addManualOption(n) {
+  const wrap = document.getElementById('mq-opts-' + n);
+  const existing = wrap.querySelectorAll('input').length;
+  if (existing >= 10) { toast('Maximum 10 options'); return; }
+  const l = MAN_OPT_LETTERS[existing];
+  const inp = document.createElement('input');
+  inp.className = 'inp'; inp.placeholder = l + '. Option'; inp.id = 'mq-opt-' + l + '-' + n;
+  wrap.appendChild(inp);
+  // Update answer select
+  const sel = document.getElementById('mq-ans-' + n);
+  const opt = document.createElement('option');
+  opt.value = l; opt.textContent = l;
+  sel.appendChild(opt);
+}
 function renderManualImageBox(n) {
   const box = $('img-attach-man-' + n);
   if (!box) return;
@@ -1460,12 +2053,24 @@ async function saveManualQs() {
   const qs = [];
   for (let i = 1; i <= S.manN; i++) {
     if (!$('mq-' + i)) continue;
-    const q=$(`mq-q-${i}`)?.value.trim(), a=$(`mq-a-${i}`)?.value.trim(),
-          b=$(`mq-b-${i}`)?.value.trim(), c=$(`mq-c-${i}`)?.value.trim(),
-          d=$(`mq-d-${i}`)?.value.trim(), ans=$(`mq-ans-${i}`)?.value,
-          exp=$(`mq-exp-${i}`)?.value.trim()||'';
-    if (q && a && b && c && d && ans)
-      qs.push({ question:q, optionA:a, optionB:b, optionC:c, optionD:d, correctAnswer:ans, explanation:exp, imageUrl: S.manImages[i] || '' });
+    const qText = $('mq-q-' + i)?.value.trim();
+    if (!qText) continue;
+    const typeEl = document.querySelector('[name="mq-type-' + i + '"]:checked');
+    const type = typeEl ? typeEl.value : 'mcq';
+    const exp = $('mq-exp-' + i)?.value.trim() || '';
+    if (type === 'theory') {
+      const modelAns = $('mq-model-ans-' + i)?.value.trim() || 'THEORY';
+      qs.push({ question:qText, correctAnswer:'THEORY', explanation:exp, imageUrl:S.manImages[i]||'', questionType:'theory', modelAnswer:modelAns });
+    } else {
+      const obj = { question:qText, explanation:exp, imageUrl:S.manImages[i]||'', questionType:'mcq' };
+      let hasOpts = false;
+      MAN_OPT_LETTERS.split('').forEach(l => {
+        const el = $('mq-opt-' + l + '-' + i);
+        if (el && el.value.trim()) { obj['option'+l] = el.value.trim(); hasOpts = true; }
+      });
+      obj.correctAnswer = $('mq-ans-' + i)?.value || 'A';
+      if (hasOpts && obj.correctAnswer) qs.push(obj);
+    }
   }
   if (!qs.length) { toast('No complete questions'); return; }
   toast('Saving…');
