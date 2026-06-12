@@ -7,31 +7,31 @@
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
 html{-webkit-tap-highlight-color:transparent;}
-body{font-family:Georgia,'Times New Roman',serif;background:#fff;color:#000;min-height:100dvh;}
+body{font-family:Georgia,'Times New Roman',serif;background:#faf8f1;color:#1a1a1a;min-height:100dvh;}
 
 /* ── Screens ── */
 .screen{display:none;min-height:100dvh;flex-direction:column;}
 .screen.on{display:flex;}
 
 /* ── Top bar ── */
-.topbar{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-bottom:2px solid #000;background:#fff;position:sticky;top:0;z-index:10;}
+.topbar{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-bottom:2px solid #000;background:#faf8f1;position:sticky;top:0;z-index:10;}
 .topbar-title{font-size:.8rem;font-weight:bold;letter-spacing:3px;text-transform:uppercase;}
 .back-btn{font-size:.75rem;letter-spacing:1px;text-transform:uppercase;cursor:pointer;text-decoration:none !important;font-family:inherit;border:none;background:none;color:#000;padding:4px 0;}
 
 /* ── Buttons ── */
 .btn{display:inline-flex;align-items:center;justify-content:center;padding:12px 28px;font-family:Georgia,serif;font-size:.9rem;font-weight:bold;letter-spacing:2px;text-transform:uppercase;cursor:pointer;border:2px solid #000;background:#000;color:#fff;outline:none;user-select:none;transition:background .15s,color .15s;}
 .btn:active{opacity:.8;}
-.btn.ghost{background:#fff;color:#000;}
+.btn.ghost{background:#faf8f1;color:#000;}
 .btn.sm{padding:7px 14px;font-size:.75rem;letter-spacing:1px;}
 .btn.full{width:100%;}
 .btn:disabled{opacity:.4;cursor:default;}
 
 /* ── Inputs ── */
-.inp{display:block;width:100%;padding:10px 14px;font-family:Georgia,serif;font-size:.9rem;border:2px solid #000;background:#fff;color:#000;outline:none;}
+.inp{display:block;width:100%;padding:10px 14px;font-family:Georgia,serif;font-size:.9rem;border:2px solid #000;background:#faf8f1;color:#000;outline:none;}
 .inp::placeholder{color:#aaa;font-style:italic;font-size:.85rem;}
 .inp:focus{background:#fafafa;}
 textarea.inp{min-height:160px;resize:vertical;}
-.sel{display:block;width:100%;padding:10px 14px;font-family:Georgia,serif;font-size:.9rem;border:2px solid #000;background:#fff;color:#000;outline:none;cursor:pointer;}
+.sel{display:block;width:100%;padding:10px 14px;font-family:Georgia,serif;font-size:.9rem;border:2px solid #000;background:#faf8f1;color:#000;outline:none;cursor:pointer;}
 .lbl{display:block;font-size:.7rem;font-weight:bold;letter-spacing:2px;text-transform:uppercase;margin-bottom:5px;}
 .fg{margin-bottom:14px;}
 
@@ -68,6 +68,12 @@ textarea.inp{min-height:160px;resize:vertical;}
 .qhdr{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-bottom:1px solid #ccc;}
 .qhdr-counter{font-size:.75rem;letter-spacing:2px;text-transform:uppercase;color:#666;}
 .qhdr-title{font-size:.8rem;font-weight:bold;max-width:60%;text-align:right;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+#q-timer.warn{background:#000;color:#fff;}
+/* Results table */
+.res-table{width:100%;border-collapse:collapse;font-size:.8rem;}
+.res-table th,.res-table td{border:1px solid #000;padding:6px 8px;text-align:left;}
+.res-table th{background:#000;color:#fff;font-size:.65rem;letter-spacing:1px;text-transform:uppercase;}
+.res-table td.num{text-align:center;}
 .q-area{padding:20px 16px;flex:1;overflow-y:auto;}
 .q-num{font-size:.7rem;letter-spacing:2px;text-transform:uppercase;color:#888;margin-bottom:6px;}
 .q-text{font-size:.95rem;font-weight:bold;line-height:1.6;margin-bottom:20px;}
@@ -108,7 +114,7 @@ textarea.inp{min-height:160px;resize:vertical;}
 .divider::before,.divider::after{content:'';flex:1;height:1px;background:#ddd;}
 #toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#000;color:#fff;padding:9px 20px;font-size:.8rem;letter-spacing:1px;opacity:0;transition:opacity .25s;pointer-events:none;z-index:100;white-space:nowrap;max-width:90vw;overflow:hidden;text-overflow:ellipsis;}
 #toast.on{opacity:1;}
-.q-grid-btn{display:inline-flex;align-items:center;justify-content:center;width:32px;height:32px;border:2px solid #000;font-size:.75rem;font-weight:bold;cursor:pointer;margin-right:5px;font-family:Georgia,serif;background:#fff;flex-shrink:0;}
+.q-grid-btn{display:inline-flex;align-items:center;justify-content:center;width:32px;height:32px;border:2px solid #000;font-size:.75rem;font-weight:bold;cursor:pointer;margin-right:5px;font-family:Georgia,serif;background:#faf8f1;flex-shrink:0;}
 .q-grid-btn.answered{background:#000;color:#fff;}
 .q-grid-btn.current{border-width:3px;}
 /* Math rendering */
@@ -153,6 +159,19 @@ textarea.inp{min-height:160px;resize:vertical;}
       <label class="lbl" style="text-align:left;display:block;">Enter Your Name</label>
       <input class="inp" id="user-name-input" placeholder="Full name" style="margin-bottom:14px;text-align:center;"
         onkeydown="if(event.key==='Enter')beginQuiz()">
+      <div id="ne-timer-row" style="display:none;margin-bottom:14px;">
+        <label class="lbl" style="text-align:left;display:block;">Set a Timer (optional)</label>
+        <select class="sel" id="ne-timer-select">
+          <option value="0">No time limit</option>
+          <option value="5">5 minutes</option>
+          <option value="10">10 minutes</option>
+          <option value="15">15 minutes</option>
+          <option value="20">20 minutes</option>
+          <option value="30">30 minutes</option>
+          <option value="45">45 minutes</option>
+          <option value="60">60 minutes</option>
+        </select>
+      </div>
       <button class="btn full" onclick="beginQuiz()">Start Quiz</button>
       <div style="margin-top:12px;">
         <button class="back-btn" onclick="show('quiz-list')">◀ Back to list</button>
@@ -179,11 +198,13 @@ textarea.inp{min-height:160px;resize:vertical;}
   <div class="prog-wrap"><div class="prog-bar" id="q-prog"></div></div>
   <div class="qhdr">
     <div class="qhdr-counter" id="q-counter">—</div>
+    <div id="q-timer" style="display:none;font-size:.8rem;font-weight:bold;letter-spacing:1px;padding:4px 10px;border:2px solid #000;">--:--</div>
     <div class="qhdr-title" id="q-quiz-title">—</div>
   </div>
   <div class="q-area">
     <div class="q-num" id="q-num"></div>
     <div class="q-text" id="q-text"></div>
+    <div id="q-img"></div>
     <div id="q-opts"></div>
   </div>
   <div id="q-grid-wrap" style="padding:10px 16px;border-top:1px solid #ddd;overflow-x:auto;white-space:nowrap;"></div>
@@ -274,6 +295,21 @@ textarea.inp{min-height:160px;resize:vertical;}
   </div>
 </div>
 
+<!-- ════════════ ADMIN: QUIZ RESULTS ════════════ -->
+<div id="s-quiz-results" class="screen">
+  <div class="topbar">
+    <button class="back-btn" onclick="show('admin-quizzes');loadQuizzes()">◀ Quizzes</button>
+    <span class="topbar-title">Admin Panel</span>
+    <span></span>
+  </div>
+  <div class="admin-bar">Admin Mode</div>
+  <div class="ctx-bar" id="ctx-results"></div>
+  <div class="page">
+    <div class="pg-title">Results</div>
+    <div id="quiz-results-body"></div>
+  </div>
+</div>
+
 <!-- ════════════ CREATE QUIZ ════════════ -->
 <div id="s-create-quiz" class="screen">
   <div class="topbar">
@@ -298,6 +334,15 @@ textarea.inp{min-height:160px;resize:vertical;}
       <div id="cq-code-row" class="fg" style="display:none;">
         <label class="lbl">Access Code</label>
         <input class="inp" id="cq-code" placeholder="e.g. MATHS001" style="text-transform:uppercase;letter-spacing:2px;">
+      </div>
+      <div id="cq-time-row" class="fg" style="display:none;">
+        <label class="lbl">Time Limit (minutes)</label>
+        <input class="inp" id="cq-time" type="number" min="0" placeholder="0 = no time limit">
+        <div style="font-size:.7rem;color:#888;margin-top:4px;">Users taking this private quiz must finish within this time.</div>
+      </div>
+      <div class="fg">
+        <label class="lbl">Pass Mark (%)</label>
+        <input class="inp" id="cq-pass" type="number" min="0" max="100" placeholder="e.g. 50 (0 = no pass/fail shown)">
       </div>
       <button class="btn full" onclick="cqNext()">Next: Add Questions ▶</button>
     </div>
@@ -418,6 +463,11 @@ function renderMath(el) {
   h=h.replace(/\*([^*\n]+)\*/g,'<em>$1</em>');
   h=h.replace(/\\\([\s\S]*?\\\)/g,function(m){return '<span class="math">'+rm(m.slice(2,-2))+'</span>';});
   h=h.replace(/\\\[[\s\S]*?\\\]/g,function(m){return '<div class="mathd">'+rm(m.slice(2,-2))+'</div>';});
+  // Plain-text exponents/subscripts outside LaTeX delimiters, e.g. x^3, a_n
+  h=h.replace(/\^\{([^}<]*)\}/g,function(m,x){return '<sup>'+x+'</sup>';});
+  h=h.replace(/_\{([^}<]*)\}/g,function(m,x){return '<sub>'+x+'</sub>';});
+  h=h.replace(/\^(-?\d+(?:\.\d+)?|[a-zA-Z])/g,'<sup>$1</sup>');
+  h=h.replace(/(?<![A-Za-z0-9>])_(-?\d+(?:\.\d+)?|[a-zA-Z])/g,'<sub>$1</sub>');
   el.innerHTML=h;
 }
 
@@ -431,6 +481,7 @@ const S = {
   subject: null, topic: null, quiz: null,
   Qs: [], ans: [], qi: 0,
   aiQs: [], pendQId: null, manN: 0,
+  manImages: {},
   userName: null
 };
 
@@ -474,7 +525,52 @@ async function apiBatch(quizId, questions) {
   return { success: true, count: total };
 }
 
-function toggleIF(id) {
+async function apiPost(body) {
+  try {
+    const r = await fetch(GAS, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify(body)
+    });
+    return await r.json();
+  } catch(e) { return { success: false, error: e.toString() }; }
+}
+
+/* Resize/compress an image file to a max dimension, return base64 dataURL */
+function resizeImage(file, maxDim = 900, quality = 0.75) {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    const reader = new FileReader();
+    reader.onload = e => { img.src = e.target.result; };
+    reader.onerror = reject;
+    img.onload = () => {
+      let { width, height } = img;
+      if (width > maxDim || height > maxDim) {
+        if (width > height) { height = Math.round(height * maxDim / width); width = maxDim; }
+        else { width = Math.round(width * maxDim / height); height = maxDim; }
+      }
+      const canvas = document.createElement('canvas');
+      canvas.width = width; canvas.height = height;
+      canvas.getContext('2d').drawImage(img, 0, 0, width, height);
+      resolve(canvas.toDataURL('image/jpeg', quality));
+    };
+    img.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+
+async function uploadQuestionImage(file) {
+  const dataUrl = await resizeImage(file);
+  const r = await apiPost({
+    action: 'uploadImage',
+    imageData: dataUrl,
+    fileName: 'q_' + Date.now() + '.jpg',
+    mimeType: 'image/jpeg'
+  });
+  return r;
+}
+
+
   const el = $(id);
   el.style.display = el.style.display === 'block' ? 'none' : 'block';
 }
@@ -486,7 +582,7 @@ async function submitCode() {
   if (code === ADM) { S.userName = 'Admin'; show('admin'); loadSubjects(); return; }
   toast('Looking up…');
   const r = await api({ action: 'getQuizByCode', code });
-  if (r.success && r.data) startQuiz(r.data.QuizID, r.data.QuizTitle);
+  if (r.success && r.data) startQuiz(r.data.QuizID, r.data.QuizTitle, String(r.data.IsPublic).toLowerCase()==='true', r.data.TimeLimit, r.data.PassMark);
   else toast('Code not found. Try again.');
 }
 
@@ -506,7 +602,7 @@ async function loadPublicQuizzes() {
         <div class="topic-block">
           <div class="topic-head">${esc(t.TopicName)}</div>
           ${t.quizzes.map(q => `
-            <div class="quiz-row" onclick="startQuiz('${q.QuizID}','${esc(q.QuizTitle).replace(/'/g,"\\'")}')">
+            <div class="quiz-row" onclick="startQuiz('${q.QuizID}','${esc(q.QuizTitle).replace(/'/g,"\\'")}',true,${parseInt(q.TimeLimit)||0},${parseInt(q.PassMark)||0})">
               <span class="quiz-row-name">${esc(q.QuizTitle)}</span>
               <span style="color:#999;font-size:.8rem;">▶</span>
             </div>
@@ -518,14 +614,21 @@ async function loadPublicQuizzes() {
 }
 
 /* ══ QUIZ TAKING ══ */
-function startQuiz(quizId, title) {
+function startQuiz(quizId, title, isPublic, timeLimit, passMark) {
   // Store quiz info, then go to name entry (unless admin)
-  S.quiz = { id: quizId, title };
+  S.quiz = { id: quizId, title, isPublic: isPublic !== false, timeLimit: parseInt(timeLimit) || 0, passMark: parseInt(passMark) || 0 };
   if (S.userName) {
     loadAndStartQuiz();
   } else {
     $('name-entry-quiz-title').textContent = title;
     $('user-name-input').value = '';
+    // Public quiz -> user may set their own timer. Private -> admin's timer applies, no choice shown.
+    if (S.quiz.isPublic) {
+      $('ne-timer-row').style.display = 'block';
+      $('ne-timer-select').value = '0';
+    } else {
+      $('ne-timer-row').style.display = 'none';
+    }
     show('name-entry');
   }
 }
@@ -534,6 +637,9 @@ async function beginQuiz() {
   const name = $('user-name-input').value.trim();
   if (!name) { toast('Enter your name'); return; }
   S.userName = name;
+  if (S.quiz.isPublic) {
+    S.quiz.timeLimit = parseInt($('ne-timer-select').value) || 0;
+  }
   loadAndStartQuiz();
 }
 
@@ -547,10 +653,65 @@ async function loadAndStartQuiz() {
     $('q-opts').innerHTML = '';
     return;
   }
-  S.Qs  = r.data;
-  S.ans = new Array(r.data.length).fill(null);
+  S.Qs  = shuffleQuestions(r.data);
+  S.ans = new Array(S.Qs.length).fill(null);
   S.qi  = 0;
   renderQ();
+  startTimer();
+}
+
+/* ══ SHUFFLE ══ */
+function shuffle(arr) {
+  const a = arr.slice();
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
+function shuffleQuestions(qs) {
+  return shuffle(qs).map(q => {
+    const letters = ['A','B','C','D'];
+    const opts = letters.map(l => ({ letter: l, text: q['Option'+l], isCorrect: l === q.CorrectAnswer }));
+    const shuffled = shuffle(opts);
+    const out = { ...q };
+    shuffled.forEach((o, i) => {
+      out['Option'+letters[i]] = o.text;
+      if (o.isCorrect) out.CorrectAnswer = letters[i];
+    });
+    return out;
+  });
+}
+
+/* ══ TIMER ══ */
+function startTimer() {
+  clearInterval(S.timerInt);
+  const tEl = $('q-timer');
+  if (!S.quiz.timeLimit || S.quiz.timeLimit <= 0) {
+    tEl.style.display = 'none';
+    return;
+  }
+  S.timeLeft = S.quiz.timeLimit * 60;
+  tEl.style.display = 'flex';
+  tEl.style.alignItems = 'center';
+  updateTimerDisplay();
+  S.timerInt = setInterval(() => {
+    S.timeLeft--;
+    updateTimerDisplay();
+    if (S.timeLeft <= 0) {
+      clearInterval(S.timerInt);
+      toast("Time's up! Submitting…");
+      showResults();
+    }
+  }, 1000);
+}
+
+function updateTimerDisplay() {
+  const m = Math.floor(S.timeLeft / 60), s = S.timeLeft % 60;
+  const tEl = $('q-timer');
+  tEl.textContent = `${m}:${String(s).padStart(2,'0')}`;
+  tEl.classList.toggle('warn', S.timeLeft <= 60);
 }
 
 function renderQ() {
@@ -559,6 +720,7 @@ function renderQ() {
   $('q-num').textContent     = `Question ${S.qi + 1}`;
   $('q-text').innerHTML      = esc(q.Question);
   renderMath($('q-text'));
+  $('q-img').innerHTML = q.ImageURL ? `<img src="${esc(q.ImageURL)}" loading="lazy" style="max-width:100%;border:2px solid #000;margin-bottom:14px;display:block;">` : '';
   $('q-prog').style.width    = `${(S.qi + 1) / n * 100}%`;
   const opts = [q.OptionA, q.OptionB, q.OptionC, q.OptionD];
   $('q-opts').innerHTML = ['A','B','C','D'].map((l, i) => `
@@ -600,17 +762,23 @@ function nextQ() {
 
 /* ══ RESULTS ══ */
 async function showResults() {
+  clearInterval(S.timerInt);
   show('results');
   const n = S.Qs.length;
   let correct = 0;
   S.Qs.forEach((q, i) => { if (S.ans[i] === q.CorrectAnswer) correct++; });
   const pct = Math.round(correct / n * 100);
+  const pm  = S.quiz.passMark || 0;
+  const passFailHtml = pm > 0
+    ? `<div style="margin-top:10px;display:inline-block;border:2px solid #000;padding:4px 16px;font-weight:bold;letter-spacing:3px;${pct>=pm?'background:#000;color:#fff;':''}">${pct >= pm ? 'PASS' : 'FAIL'}</div>`
+    : '';
 
   $('result-box').innerHTML = `
     <div style="font-size:.75rem;letter-spacing:2px;text-transform:uppercase;color:#888;margin-bottom:4px;">${esc(S.userName || '')}</div>
     <div class="result-pct">${pct}%</div>
     <div class="result-lbl">Score</div>
     <div class="result-sub">${correct} / ${n} correct</div>
+    ${passFailHtml}
     <div style="margin-top:16px;"><button class="btn ghost sm" onclick="reloadAndStart()">Try Again</button></div>
   `;
 
@@ -631,6 +799,7 @@ async function showResults() {
     return `
       <div class="rev-card">
         <div class="rev-q">${i+1}. ${esc(q.Question)}</div>
+        ${q.ImageURL ? `<img src="${esc(q.ImageURL)}" loading="lazy" style="max-width:100%;border:1px solid #000;margin-bottom:8px;display:block;">` : ''}
         ${['A','B','C','D'].map(l => `
           <div class="rev-opt${l===ca?' right':(l===ua&&l!==ca?' wrong':'')}">
             ${l===ca?'✓':(l===ua&&l!==ca?'✗':' ')} ${l}. ${esc(m[l]||'')}
@@ -740,9 +909,13 @@ async function loadQuizzes() {
       <div class="li">
         <div>
           <div class="li-name">${esc(q.QuizTitle)}</div>
-          <div class="li-meta">${pub ? '● Public' : '○ Private'}${q.AccessCode ? ' · Code: ' + q.AccessCode : ''}</div>
+          <div class="li-meta">${pub ? '● Public' : '○ Private'}${q.AccessCode ? ' · Code: ' + q.AccessCode : ''}${(!pub && q.TimeLimit > 0) ? ' · ' + q.TimeLimit + ' min' : ''}</div>
         </div>
-        <button class="btn sm" onclick="delQuiz('${q.QuizID}',event)">Del</button>
+        <div class="li-actions">
+          <button class="btn ghost sm" onclick="viewResults('${q.QuizID}','${esc(q.QuizTitle).replace(/'/g,"\\'")}',event)">Results</button>
+          <button class="btn ghost sm" onclick="shareQuiz('${q.QuizID}','${esc(q.QuizTitle).replace(/'/g,"\\'")}',event)">Share</button>
+          <button class="btn sm" onclick="delQuiz('${q.QuizID}',event)">Del</button>
+        </div>
       </div>
     `;
   }).join('');
@@ -755,14 +928,59 @@ async function delQuiz(id, e) {
   toast('Deleted'); loadQuizzes();
 }
 
+function shareQuiz(quizId, title, e) {
+  e.stopPropagation();
+  const url = location.origin + location.pathname + '?quiz=' + quizId;
+  if (navigator.share) {
+    navigator.share({ title: 'CBT App - ' + title, url }).catch(()=>{});
+  } else if (navigator.clipboard) {
+    navigator.clipboard.writeText(url).then(() => toast('Link copied!'))
+      .catch(() => toast(url));
+  } else {
+    toast(url);
+  }
+}
+
+async function viewResults(quizId, title, e) {
+  e.stopPropagation();
+  $('ctx-results').textContent = title;
+  show('quiz-results');
+  const el = $('quiz-results-body');
+  el.innerHTML = '<div class="loading">Loading…</div>';
+  const r = await api({ action: 'getResultsByQuiz', quizId });
+  if (!r.success || !r.data?.length) {
+    el.innerHTML = '<div class="empty">No attempts yet for this quiz.</div>';
+    return;
+  }
+  el.innerHTML = `
+    <table class="res-table">
+      <tr><th>#</th><th>Name</th><th>Score</th><th>%</th><th>Date</th></tr>
+      ${r.data.map((res, i) => `
+        <tr>
+          <td class="num">${i+1}</td>
+          <td>${esc(res.UserName)}</td>
+          <td class="num">${res.Score}/${res.Total}</td>
+          <td class="num">${res.Percentage}%</td>
+          <td>${new Date(res.Date).toLocaleDateString()}</td>
+        </tr>
+      `).join('')}
+    </table>
+  `;
+}
+
 /* ══ CREATE QUIZ ══ */
 function cqVisChange(el) {
-  $('cq-code-row').style.display = el.value === 'false' ? 'block' : 'none';
+  const priv = el.value === 'false';
+  $('cq-code-row').style.display = priv ? 'block' : 'none';
+  $('cq-time-row').style.display = priv ? 'block' : 'none';
 }
 
 function openCreateQuiz() {
   $('cq-title').value = '';
   $('cq-code').value  = '';
+  $('cq-time').value  = '';
+  $('cq-pass').value  = '';
+  $('cq-time-row').style.display = 'none';
   $('ai-text').value  = '';
   $('ai-status').textContent = '';
   $('ai-preview').style.display = 'none';
@@ -773,7 +991,7 @@ function openCreateQuiz() {
   $('cq-step1').style.display  = 'block';
   $('cq-step2').style.display  = 'none';
   document.querySelector('[name="cq-vis"][value="true"]').checked = true;
-  S.aiQs = []; S.pendQId = null; S.manN = 0;
+  S.aiQs = []; S.pendQId = null; S.manN = 0; S.manImages = {};
   show('create-quiz');
 }
 
@@ -781,9 +999,11 @@ async function cqNext() {
   const title    = $('cq-title').value.trim();
   const isPublic = document.querySelector('[name="cq-vis"]:checked').value;
   const code     = $('cq-code').value.trim().toUpperCase();
+  const timeLimit = isPublic === 'false' ? (parseInt($('cq-time').value) || 0) : 0;
+  const passMark  = parseInt($('cq-pass').value) || 0;
   if (!title) { toast('Enter quiz title'); return; }
   if (isPublic === 'false' && !code) { toast('Enter access code'); return; }
-  const r = await api({ action:'createQuiz', topicId:S.topic.id, subjectId:S.subject.id, title, isPublic, accessCode: isPublic==='true'?'':code });
+  const r = await api({ action:'createQuiz', topicId:S.topic.id, subjectId:S.subject.id, title, isPublic, accessCode: isPublic==='true'?'':code, timeLimit, passMark });
   if (!r.success) { toast('Error: ' + r.error); return; }
   S.pendQId = r.data.QuizID;
   $('cq-bar').textContent = 'Quiz: ' + title;
@@ -833,9 +1053,44 @@ function renderAIPreview() {
       <div class="q-preview-opts">A. ${esc(q.optionA)} &nbsp; B. ${esc(q.optionB)}<br>C. ${esc(q.optionC)} &nbsp; D. ${esc(q.optionD)}</div>
       <div class="q-preview-ans">✓ Answer: ${q.correctAnswer}</div>
       ${q.explanation ? `<div style="font-size:.75rem;color:#555;margin-top:3px;">${esc(q.explanation)}</div>` : ''}
+      <div class="img-attach" id="img-attach-ai-${i}" style="margin-top:8px;">
+        ${q.imageUrl
+          ? `<img src="${esc(q.imageUrl)}" style="max-width:100%;max-height:140px;border:1px solid #000;display:block;margin-bottom:6px;">
+             <button class="btn ghost sm" onclick="removeImage('ai',${i})">Remove Image</button>`
+          : `<input type="file" accept="image/*" id="img-input-ai-${i}" style="display:none" onchange="attachImage('ai',${i},this)">
+             <button class="btn ghost sm" onclick="document.getElementById('img-input-ai-${i}').click()">+ Image</button>
+             <span id="img-status-ai-${i}" style="font-size:.75rem;color:#555;margin-left:6px;"></span>`
+        }
+      </div>
     </div>
   `).join('');
   $('ai-preview').style.display = 'block';
+}
+
+async function attachImage(group, i, inputEl) {
+  const file = inputEl.files[0];
+  if (!file) return;
+  const statusEl = $(`img-status-${group}-${i}`);
+  if (statusEl) statusEl.textContent = 'Uploading…';
+  const r = await uploadQuestionImage(file);
+  if (!r.success) { if (statusEl) statusEl.textContent = 'Failed: ' + r.error; return; }
+  if (group === 'ai') {
+    S.aiQs[i].imageUrl = r.data.url;
+    renderAIPreview();
+  } else {
+    S.manImages[i] = r.data.url;
+    renderManualImageBox(i);
+  }
+}
+
+function removeImage(group, i) {
+  if (group === 'ai') {
+    delete S.aiQs[i].imageUrl;
+    renderAIPreview();
+  } else {
+    delete S.manImages[i];
+    renderManualImageBox(i);
+  }
 }
 
 function aiClear() {
@@ -869,16 +1124,30 @@ function addManualQ() {
       <input class="inp" placeholder="C. Option" id="mq-c-${n}">
       <input class="inp" placeholder="D. Option" id="mq-d-${n}">
     </div>
-    <div style="display:flex;gap:8px;align-items:center;">
+    <div style="display:flex;gap:8px;align-items:center;margin-bottom:10px;">
       <select class="sel" id="mq-ans-${n}" style="width:auto;">
         <option value="">Answer</option>
         <option>A</option><option>B</option><option>C</option><option>D</option>
       </select>
       <input class="inp" style="flex:1;" placeholder="Explanation (optional)" id="mq-exp-${n}">
     </div>
+    <div id="img-attach-man-${n}"></div>
   `;
   $('manual-list').appendChild(div);
   $('manual-save').style.display = 'block';
+  renderManualImageBox(n);
+}
+
+function renderManualImageBox(n) {
+  const box = $('img-attach-man-' + n);
+  if (!box) return;
+  const url = S.manImages[n];
+  box.innerHTML = url
+    ? `<img src="${esc(url)}" style="max-width:100%;max-height:140px;border:1px solid #000;display:block;margin-bottom:6px;">
+       <button class="btn ghost sm" onclick="removeImage('man',${n})">Remove Image</button>`
+    : `<input type="file" accept="image/*" id="img-input-man-${n}" style="display:none" onchange="attachImage('man',${n},this)">
+       <button class="btn ghost sm" onclick="document.getElementById('img-input-man-${n}').click()">+ Image</button>
+       <span id="img-status-man-${n}" style="font-size:.75rem;color:#555;margin-left:6px;"></span>`;
 }
 
 async function saveManualQs() {
@@ -890,7 +1159,7 @@ async function saveManualQs() {
           d=$(`mq-d-${i}`)?.value.trim(), ans=$(`mq-ans-${i}`)?.value,
           exp=$(`mq-exp-${i}`)?.value.trim()||'';
     if (q && a && b && c && d && ans)
-      qs.push({ question:q, optionA:a, optionB:b, optionC:c, optionD:d, correctAnswer:ans, explanation:exp });
+      qs.push({ question:q, optionA:a, optionB:b, optionC:c, optionD:d, correctAnswer:ans, explanation:exp, imageUrl: S.manImages[i] || '' });
   }
   if (!qs.length) { toast('No complete questions'); return; }
   toast('Saving…');
@@ -898,6 +1167,20 @@ async function saveManualQs() {
   if (r.success) { toast(`${r.count} questions saved!`); show('admin-quizzes'); loadQuizzes(); }
   else toast('Error: ' + r.error);
 }
+
+/* ══ SHARE LINK HANDLER ══ */
+(async function checkSharedLink() {
+  const params = new URLSearchParams(location.search);
+  const quizId = params.get('quiz');
+  if (!quizId) return;
+  toast('Loading shared quiz…');
+  const r = await api({ action: 'getQuizById', quizId });
+  if (r.success && r.data) {
+    startQuiz(r.data.QuizID, r.data.QuizTitle, String(r.data.IsPublic).toLowerCase()==='true', r.data.TimeLimit, r.data.PassMark);
+  } else {
+    toast('Quiz not found');
+  }
+})();
 </script>
 </body>
 </html>
