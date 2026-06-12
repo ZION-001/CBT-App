@@ -515,10 +515,10 @@ async function api(params) {
 }
 
 async function apiBatch(quizId, questions) {
-  const SIZE = 12;
+  const SIZE = 4; // smaller batches since images make payloads bigger
   let total = 0;
   for (let i = 0; i < questions.length; i += SIZE) {
-    const r = await api({ action: 'addQuestions', quizId, questions: JSON.stringify(questions.slice(i, i + SIZE)) });
+    const r = await apiPost({ action: 'addQuestions', quizId, questions: JSON.stringify(questions.slice(i, i + SIZE)) });
     if (!r.success) return r;
     total += r.data.count;
   }
@@ -537,7 +537,7 @@ async function apiPost(body) {
 }
 
 /* Resize/compress an image file to a max dimension, return base64 dataURL */
-function resizeImage(file, maxDim = 900, quality = 0.75) {
+function resizeImage(file, maxDim, quality) {
   return new Promise((resolve, reject) => {
     const img = new Image();
     const reader = new FileReader();
@@ -559,15 +559,21 @@ function resizeImage(file, maxDim = 900, quality = 0.75) {
   });
 }
 
+/* Google Sheets cell limit is 50,000 chars. Keep base64 well under that. */
+const MAX_CELL_CHARS = 45000;
+
 async function uploadQuestionImage(file) {
-  const dataUrl = await resizeImage(file);
-  const r = await apiPost({
-    action: 'uploadImage',
-    imageData: dataUrl,
-    fileName: 'q_' + Date.now() + '.jpg',
-    mimeType: 'image/jpeg'
-  });
-  return r;
+  // Try progressively smaller/lower-quality until it fits in a sheet cell
+  const attempts = [
+    [700, 0.6], [500, 0.5], [400, 0.4], [300, 0.35], [220, 0.3]
+  ];
+  for (const [dim, q] of attempts) {
+    const dataUrl = await resizeImage(file, dim, q);
+    if (dataUrl.length <= MAX_CELL_CHARS) {
+      return { success: true, data: { url: dataUrl } };
+    }
+  }
+  return { success: false, error: 'Image too large/complex even after compression. Try a simpler or cropped image.' };
 }
 
 function toggleIF(id) {
