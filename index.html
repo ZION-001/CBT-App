@@ -1145,16 +1145,11 @@ async function markTheoryWithAI(i) {
   const modelAns = q.CorrectAnswer !== 'THEORY' ? q.CorrectAnswer : '';
   const box = document.getElementById('ai-mark-' + i);
   if (!box) return;
-  const prompt = `You are a teacher marking a student's theory answer.
-
-Question: ${q.Question}
-${modelAns ? 'Model Answer / Key Points: ' + modelAns : ''}
-${q.Explanation ? 'Additional Context: ' + q.Explanation : ''}
-Student Answer: ${studentAns || '(no answer given)'}
-
-Respond in this exact JSON format (no markdown):
-{"score":"X/10","verdict":"Excellent|Good|Partial|Poor|No Answer","feedback":"2-3 sentence feedback","keyPoints":"brief bullet points of what a good answer should include"}`;
-
+  const prompt = 'You are a teacher marking a student theory answer.\n\nQuestion: ' + q.Question +
+    (modelAns ? '\nModel Answer: ' + modelAns : '') +
+    (q.Explanation ? '\nContext: ' + q.Explanation : '') +
+    '\nStudent Answer: ' + (studentAns || '(no answer given)') +
+    '\n\nRespond in this exact JSON format (no markdown):\n{"score":"X/10","verdict":"Excellent|Good|Partial|Poor|No Answer","feedback":"2-3 sentences","keyPoints":"brief key points"}';
   try {
     const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
       method: 'POST',
@@ -1163,18 +1158,17 @@ Respond in this exact JSON format (no markdown):
     });
     const d = await res.json();
     if (d.error) { box.innerHTML = '<span style="color:var(--red)">AI error: ' + d.error.message + '</span>'; return; }
-    let txt = d.choices[0].message.content.trim().replace(/\`\`\`json|\`\`\`/g,'').trim();
+    let txt = d.choices[0].message.content.trim().replace(/```json|```/g,'').trim();
     const result = JSON.parse(txt);
-    const verdictColor = { Excellent:'var(--green)', Good:'var(--green-dim)', Partial:'var(--yellow)', Poor:'var(--red)', 'No Answer':'var(--text-muted)' };
-    const vc = verdictColor[result.verdict] || 'var(--text-secondary)';
-    box.innerHTML = \`
-      <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">
-        <span style="font-family:'Sora',sans-serif;font-size:1.1rem;font-weight:800;color:\${vc};">\${result.score}</span>
-        <span style="font-size:.68rem;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;padding:3px 10px;border-radius:50px;background:\${vc};color:#fff;">\${result.verdict}</span>
-      </div>
-      <div style="font-size:.82rem;line-height:1.6;color:var(--text-primary);margin-bottom:6px;">\${result.feedback}</div>
-      \${result.keyPoints ? \`<div style="font-size:.75rem;color:var(--text-secondary);border-top:1px dashed var(--border);padding-top:6px;margin-top:4px;"><strong>Key points:</strong> \${result.keyPoints}</div>\` : ''}
-    \`;
+    const vcMap = { Excellent:'var(--green)', Good:'var(--green-dim)', Partial:'var(--yellow)', Poor:'var(--red)', 'No Answer':'var(--text-muted)' };
+    const vc = vcMap[result.verdict] || 'var(--text-secondary)';
+    box.innerHTML =
+      '<div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">' +
+        '<span style="font-family:Sora,sans-serif;font-size:1.1rem;font-weight:800;color:' + vc + ';">' + result.score + '</span>' +
+        '<span style="font-size:.68rem;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;padding:3px 10px;border-radius:50px;background:' + vc + ';color:#fff;">' + result.verdict + '</span>' +
+      '</div>' +
+      '<div style="font-size:.82rem;line-height:1.6;color:var(--text-primary);margin-bottom:6px;">' + result.feedback + '</div>' +
+      (result.keyPoints ? '<div style="font-size:.75rem;color:var(--text-secondary);border-top:1px dashed var(--border);padding-top:6px;">' + result.keyPoints + '</div>' : '');
   } catch(e) {
     box.innerHTML = '<span style="color:var(--red)">Could not mark: ' + e.message + '</span>';
   }
@@ -1885,34 +1879,17 @@ Text:
 }
 
 function renderAIPreview() {
+  // Legacy: now handled by openPreviewScreen
   $('ai-count').textContent = S.aiQs.length;
-  const LETTERS = 'ABCDEFGHIJ';
-  $('ai-preview-list').innerHTML = S.aiQs.map((q, i) => {
-    const isTheory = q.type === 'theory' || !q.options || q.options.length === 0;
-    const optsHtml = isTheory
-      ? `<div style="font-size:.72rem;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--blue-mid);padding:4px 8px;background:var(--blue-light);border-radius:4px;display:inline-block;margin-bottom:6px;">Theory / Open-Ended</div>`
-      : q.options.map((o, idx) => `<div class="q-preview-opts">${LETTERS[idx]}. ${esc(o)}</div>`).join('');
-    const ansHtml = isTheory
-      ? `<div class="q-preview-ans" style="color:var(--blue-mid);">Model Answer: ${esc(q.correctAnswer)}</div>`
-      : `<div class="q-preview-ans">Correct: ${q.correctAnswer}</div>`;
-    return \`
-    <div class="q-preview">
-      <div class="q-preview-q">\${i+1}. \${esc(q.question)}</div>
-      \${optsHtml}
-      \${ansHtml}
-      \${q.explanation ? \`<div style="font-size:.75rem;color:var(--text-secondary);margin-top:4px;padding:6px 8px;background:var(--surface2);border-radius:5px;">\${esc(q.explanation)}</div>\` : ''}
-      <div class="img-attach" id="img-attach-ai-\${i}" style="margin-top:8px;">
-        \${q.imageUrl
-          ? \`<img src="\${esc(q.imageUrl)}" style="max-width:100%;max-height:140px;border:1px solid var(--border);border-radius:6px;display:block;margin-bottom:6px;">
-             <button class="btn ghost sm" onclick="removeImage('ai',\${i})">Remove Image</button>\`
-          : \`<input type="file" accept="image/*" id="img-input-ai-\${i}" style="display:none" onchange="attachImage('ai',\${i},this)">
-             <button class="btn ghost sm" onclick="document.getElementById('img-input-ai-\${i}').click()">+ Image</button>
-             <span id="img-status-ai-\${i}" style="font-size:.75rem;color:var(--text-muted);margin-left:6px;"></span>\`
-        }
-      </div>
-    </div>\`;
-  }).join('');
   $('ai-preview').style.display = 'block';
+  $('ai-preview-list').innerHTML = S.aiQs.map(function(q, i) {
+    var isTheory = q.type === 'theory' || !q.options || q.options.length === 0;
+    var typeTag = isTheory ? 'Theory' : 'MCQ (' + (q.options||[]).length + ' opts)';
+    return '<div class="q-preview"><div class="q-preview-q">' + (i+1) + '. ' + esc(q.question) + '</div>' +
+      '<div class="q-preview-opts" style="font-size:.7rem;color:var(--text-muted);">' + typeTag + '</div>' +
+      (q.explanation ? '<div style="font-size:.75rem;color:var(--text-secondary);margin-top:4px;">' + esc(q.explanation) + '</div>' : '') +
+      '</div>';
+  }).join('');
 }
 
 async function attachImage(group, i, inputEl) {
