@@ -652,9 +652,9 @@ input, textarea, select, .inp, .sel {
         <div style="font-size:.6rem;font-weight:700;letter-spacing:3.5px;text-transform:uppercase;color:rgba(255,255,255,.55);margin:8px 0 32px;">Computer Based Test</div>
         <button class="btn full" onclick="loadPublicQuizzes()" style="background:linear-gradient(135deg,var(--yellow),var(--red));box-shadow:0 4px 18px rgba(232,41,74,.4);font-size:.8rem;">Browse Quizzes</button>
         <div style="margin-top:22px;border-top:1px solid rgba(255,255,255,.15);padding-top:20px;">
-          <div style="font-size:.6rem;font-weight:700;letter-spacing:2.5px;text-transform:uppercase;color:rgba(255,255,255,.5);margin-bottom:10px;">Have an access code?</div>
+          <div style="font-size:.6rem;font-weight:700;letter-spacing:2.5px;text-transform:uppercase;color:rgba(255,255,255,.5);margin-bottom:10px;">Search for a Quiz</div>
           <div style="display:flex;flex-direction:column;gap:9px;">
-            <input class="inp" id="home-code" placeholder="Enter code"
+            <input class="inp" id="home-code" placeholder="Enter quiz code"
               style="width:100%;text-transform:uppercase;text-align:center;background:rgba(0,0,0,.55);border-color:rgba(255,255,255,.6);color:#fff;letter-spacing:3px;font-weight:700;"
               onkeyup="if(event.key==='Enter')submitCode()">
             <button class="btn full ghost" onclick="submitCode()" style="border-color:rgba(255,255,255,.4);color:#fff;font-size:.8rem;">Continue</button>
@@ -667,7 +667,95 @@ input, textarea, select, .inp, .sel {
       </div>
     </div>
   </div>
+
+  <!-- Floating Create Quiz (admin) button -->
+  <button onclick="openAdminGate()" title="Create a Quiz" style="
+    position:fixed;bottom:24px;right:24px;width:54px;height:54px;border-radius:50%;
+    background:var(--grad-main);color:#fff;border:none;cursor:pointer;
+    display:flex;align-items:center;justify-content:center;
+    box-shadow:0 6px 20px rgba(13,27,110,.4);z-index:20;font-size:1.6rem;line-height:1;
+    -webkit-tap-highlight-color:transparent;">+</button>
+
+  <!-- Create a Quiz — auth modal -->
+  <div id="admin-gate" style="display:none;position:fixed;inset:0;z-index:30;background:rgba(13,21,64,.55);backdrop-filter:blur(4px);align-items:center;justify-content:center;">
+    <div style="width:90%;max-width:320px;background:var(--card);border-radius:14px;padding:24px 20px;box-shadow:var(--shadow-lg);">
+      <div class="pg-title" id="ag-title" style="margin-bottom:14px;">Create a Quiz</div>
+
+      <!-- Step 1: Email -->
+      <div id="ag-step-email">
+        <div class="fg">
+          <label class="lbl">School Email</label>
+          <input class="inp" id="ag-email" type="email" placeholder="you@school.com"
+            onkeyup="if(event.key==='Enter')submitAgEmail()">
+        </div>
+        <div style="display:flex;gap:8px;">
+          <button class="btn full" onclick="submitAgEmail()">Continue</button>
+          <button class="btn full ghost" onclick="closeAdminGate()">Cancel</button>
+        </div>
+        <div style="margin-top:12px;text-align:center;">
+          <button class="back-btn" onclick="agSwitchToRegister()">New here? Create an account</button>
+        </div>
+      </div>
+
+      <!-- Step 1b: Register -->
+      <div id="ag-step-register" style="display:none;">
+        <div class="fg">
+          <label class="lbl">School / Organisation Name</label>
+          <input class="inp" id="ag-reg-name" type="text" placeholder="e.g. Bright Future Academy">
+        </div>
+        <div class="fg">
+          <label class="lbl">Email</label>
+          <input class="inp" id="ag-reg-email" type="email" placeholder="you@school.com"
+            onkeyup="if(event.key==='Enter')submitAgRegister()">
+        </div>
+        <div style="display:flex;gap:8px;">
+          <button class="btn full" onclick="submitAgRegister()">Create Account</button>
+          <button class="btn full ghost" onclick="closeAdminGate()">Cancel</button>
+        </div>
+        <div style="margin-top:12px;text-align:center;">
+          <button class="back-btn" onclick="agSwitchToLogin()">Already have an account? Log in</button>
+        </div>
+      </div>
+
+      <!-- Step 2a: PIN -->
+      <div id="ag-step-pin" style="display:none;">
+        <div class="fg">
+          <label class="lbl">Enter PIN</label>
+          <input class="inp" id="ag-pin" type="password" inputmode="numeric" maxlength="6" placeholder="••••" style="text-align:center;letter-spacing:6px;font-weight:700;"
+            onkeyup="if(event.key==='Enter')submitAgPin()">
+        </div>
+        <div style="display:flex;gap:8px;">
+          <button class="btn full" onclick="submitAgPin()">Continue</button>
+          <button class="btn full ghost" onclick="closeAdminGate()">Cancel</button>
+        </div>
+        <div style="margin-top:12px;text-align:center;">
+          <button class="back-btn" onclick="agSwitchToOtp()">Use a code instead</button>
+        </div>
+      </div>
+
+      <!-- Step 2b: OTP -->
+      <div id="ag-step-otp" style="display:none;">
+        <div style="font-size:.75rem;color:var(--text-secondary);margin-bottom:12px;">We sent a verification code to your email.</div>
+        <div class="fg">
+          <label class="lbl">Verification Code</label>
+          <input class="inp" id="ag-otp" type="text" inputmode="numeric" maxlength="6" placeholder="• • • • • •" style="text-align:center;letter-spacing:6px;font-weight:700;"
+            onkeyup="if(event.key==='Enter')submitAgOtp()">
+        </div>
+        <div style="display:flex;gap:8px;">
+          <button class="btn full" onclick="submitAgOtp()">Continue</button>
+          <button class="btn full ghost" onclick="closeAdminGate()">Cancel</button>
+        </div>
+        <div style="margin-top:12px;text-align:center;">
+          <button class="back-btn" onclick="resendAgOtp()">Resend code</button>
+        </div>
+      </div>
+
+    </div>
+  </div>
 </div>
+
+<!-- ════════════ CREATE QUIZ DASHBOARD: PIN SETTINGS (shown inside admin) ════════════ -->
+<!-- (Injected into admin screen via JS — see setupPinPrompt) -->
 
 <!-- ════════════ NAME ENTRY ════════════ -->
 <div id="s-name-entry" class="screen">
@@ -747,18 +835,21 @@ input, textarea, select, .inp, .sel {
   </div>
 </div>
 
-<!-- ════════════ ADMIN: SUBJECTS ════════════ -->
+<!-- ════════════ CREATE A QUIZ: SUBJECTS ════════════ -->
 <div id="s-admin" class="screen">
   <div class="topbar">
     <button class="back-btn" onclick="show('home')">◀ Exit</button>
-    <span class="topbar-title">Admin Panel</span>
+    <span class="topbar-title">Create a Quiz</span>
     <span></span>
   </div>
-  <div class="admin-bar">Admin Mode · ADMCBT2026</div>
+  <div class="admin-bar">Manage Quizzes</div>
   <div class="page">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
       <div class="pg-title" style="margin:0;border:0;padding:0;">Subjects</div>
-      <button class="btn sm" onclick="toggleIF('if-subj')">+ Subject</button>
+      <div style="display:flex;gap:8px;">
+        <button class="btn ghost sm" onclick="openPinSettings()">Security</button>
+        <button class="btn sm" onclick="toggleIF('if-subj')">+ Subject</button>
+      </div>
     </div>
     <div id="if-subj" class="inline-form">
       <div class="fg"><label class="lbl">Subject Name</label><input class="inp" id="new-subj-name" placeholder="e.g. Mathematics"></div>
@@ -771,14 +862,38 @@ input, textarea, select, .inp, .sel {
   </div>
 </div>
 
+<!-- ════════════ SECURITY (PIN SETTINGS) ════════════ -->
+<div id="s-pin-settings" class="screen">
+  <div class="topbar">
+    <button class="back-btn" onclick="show('admin')">◀ Back</button>
+    <span class="topbar-title">Security</span>
+    <span></span>
+  </div>
+  <div class="page">
+    <div class="pg-title">Login PIN</div>
+    <div style="font-size:.8rem;color:var(--text-secondary);margin-bottom:16px;line-height:1.5;">
+      Set a PIN to skip email verification next time you log in. Leave this off to keep using a one-time code sent to your email.
+    </div>
+    <div class="fg">
+      <label class="lbl">New PIN (4-6 digits)</label>
+      <input class="inp" id="ps-pin" type="password" inputmode="numeric" maxlength="6" placeholder="••••">
+    </div>
+    <div style="display:flex;gap:8px;margin-bottom:10px;">
+      <button class="btn full" onclick="savePin()">Save PIN</button>
+      <button class="btn full ghost" onclick="removePinSetting()">Remove PIN</button>
+    </div>
+  </div>
+</div>
+
+
 <!-- ════════════ ADMIN: TOPICS ════════════ -->
 <div id="s-admin-topics" class="screen">
   <div class="topbar">
     <button class="back-btn" onclick="show('admin');loadSubjects()">◀ Subjects</button>
-    <span class="topbar-title">Admin Panel</span>
+    <span class="topbar-title">Create a Quiz</span>
     <span></span>
   </div>
-  <div class="admin-bar">Admin Mode</div>
+  <div class="admin-bar">Manage Quizzes</div>
   <div class="ctx-bar" id="ctx-subj"></div>
   <div class="page">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
@@ -800,10 +915,10 @@ input, textarea, select, .inp, .sel {
 <div id="s-admin-quizzes" class="screen">
   <div class="topbar">
     <button class="back-btn" onclick="show('admin-topics');loadTopics()">◀ Topics</button>
-    <span class="topbar-title">Admin Panel</span>
+    <span class="topbar-title">Create a Quiz</span>
     <span></span>
   </div>
-  <div class="admin-bar">Admin Mode</div>
+  <div class="admin-bar">Manage Quizzes</div>
   <div class="ctx-bar" id="ctx-topic"></div>
   <div class="page">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
@@ -818,10 +933,10 @@ input, textarea, select, .inp, .sel {
 <div id="s-quiz-results" class="screen">
   <div class="topbar">
     <button class="back-btn" onclick="show('admin-quizzes');loadQuizzes()">◀ Quizzes</button>
-    <span class="topbar-title">Admin Panel</span>
+    <span class="topbar-title">Create a Quiz</span>
     <span></span>
   </div>
-  <div class="admin-bar">Admin Mode</div>
+  <div class="admin-bar">Manage Quizzes</div>
   <div class="ctx-bar" id="ctx-results"></div>
   <div class="page">
     <div class="pg-title">Results</div>
@@ -913,7 +1028,7 @@ Ans: B"></textarea>
     <span class="topbar-title">Review Questions</span>
     <span></span>
   </div>
-  <div class="admin-bar">Admin Mode</div>
+  <div class="admin-bar">Manage Quizzes</div>
   <div class="ctx-bar" id="qprev-ctx"></div>
 
   <!-- Summary bar -->
@@ -954,7 +1069,7 @@ Ans: B"></textarea>
     <span class="topbar-title">Edit Question</span>
     <span></span>
   </div>
-  <div class="admin-bar">Admin Mode</div>
+  <div class="admin-bar">Manage Quizzes</div>
   <div class="page">
     <div class="fg">
       <label class="lbl">Question Type</label>
@@ -1070,7 +1185,6 @@ function renderMath(el) {
 /* ══ Config ══ */
 const GAS      = 'https://script.google.com/macros/s/AKfycbzGW8SWtuuJM0KF5P26p_CNKFXrk9_e7gfjgrBdecwH6DghyMdBFtrke5Nrqbpxl_aPww/exec';
 const GROQ_KEY = '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';
-const ADM      = 'ADMCBT2026';
 
 /* ══ State ══ */
 const S = {
@@ -1091,9 +1205,11 @@ const S = {
   faceModelReady: false,
   faceDetector: null,
   noFaceStreak: 0,
-  multiFaceStreak: 0
+  multiFaceStreak: 0,
+  // School auth session
+  schoolEmail: null,
+  sessionToken: null
 };
-
 /* ══ Utils ══ */
 const $ = id => document.getElementById(id);
 
@@ -1131,7 +1247,24 @@ function esc(s) {
   return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
 
+/* Actions that require the school's session token */
+const PROTECTED_ACTIONS = new Set([
+  'createSubject','deleteSubject',
+  'createTopic','deleteTopic',
+  'createQuiz','deleteQuiz',
+  'addQuestions','updateQuestion','deleteQuestion',
+  'getQuizzesByTopic','getResultsByQuiz','getTopics','getSubjects'
+]);
+
+function withAuth(params) {
+  if (PROTECTED_ACTIONS.has(params.action) && S.schoolEmail && S.sessionToken) {
+    return Object.assign({}, params, { email: S.schoolEmail, token: S.sessionToken });
+  }
+  return params;
+}
+
 async function api(params, timeoutMs) {
+  params = withAuth(params);
   timeoutMs = timeoutMs || 20000;
   gLoad();
   try {
@@ -1139,7 +1272,11 @@ async function api(params, timeoutMs) {
     const tid = setTimeout(function() { controller.abort(); }, timeoutMs);
     const r = await fetch(GAS + '?' + new URLSearchParams(params), { signal: controller.signal });
     clearTimeout(tid);
-    return await r.json();
+    const data = await r.json();
+    if (data && data.success === false && data.error === 'Unauthorized. Please log in again.') {
+      sessionExpired();
+    }
+    return data;
   } catch(e) {
     if (e.name === 'AbortError') return { success: false, error: 'Request timed out. Check your connection.' };
     return { success: false, error: e.toString() };
@@ -1160,6 +1297,7 @@ async function apiBatch(quizId, questions) {
 }
 
 async function apiPost(body) {
+  body = withAuth(body);
   gLoad();
   try {
     const r = await fetch(GAS, {
@@ -1167,7 +1305,11 @@ async function apiPost(body) {
       headers: { 'Content-Type': 'text/plain;charset=utf-8' },
       body: JSON.stringify(body)
     });
-    return await r.json();
+    const data = await r.json();
+    if (data && data.success === false && data.error === 'Unauthorized. Please log in again.') {
+      sessionExpired();
+    }
+    return data;
   } catch(e) { return { success: false, error: e.toString() }; }
   finally { gUnload(); }
 }
@@ -1220,11 +1362,136 @@ function toggleIF(id) {
   el.style.display = el.style.display === 'block' ? 'none' : 'block';
 }
 
+/* ══ CREATE-A-QUIZ AUTH FLOW ══ */
+function openAdminGate() {
+  $('ag-email').value = '';
+  $('ag-pin').value = '';
+  $('ag-otp').value = '';
+  $('ag-reg-name').value = '';
+  $('ag-reg-email').value = '';
+  $('ag-title').textContent = 'Create a Quiz';
+  $('ag-step-email').style.display = '';
+  $('ag-step-register').style.display = 'none';
+  $('ag-step-pin').style.display = 'none';
+  $('ag-step-otp').style.display = 'none';
+  $('admin-gate').style.display = 'flex';
+  setTimeout(() => $('ag-email').focus(), 50);
+}
+function closeAdminGate() {
+  $('admin-gate').style.display = 'none';
+}
+
+function agSwitchToRegister() {
+  $('ag-step-email').style.display = 'none';
+  $('ag-step-register').style.display = '';
+  setTimeout(() => $('ag-reg-name').focus(), 50);
+}
+function agSwitchToLogin() {
+  $('ag-step-register').style.display = 'none';
+  $('ag-step-email').style.display = '';
+  setTimeout(() => $('ag-email').focus(), 50);
+}
+
+async function submitAgRegister() {
+  const schoolName = $('ag-reg-name').value.trim();
+  const email = $('ag-reg-email').value.trim().toLowerCase();
+  if (!schoolName) { toast('Enter your school name'); return; }
+  if (!email) { toast('Enter your email'); return; }
+  const r = await api({ action: 'registerSchool', schoolName, email });
+  if (!r.success) { toast(r.error || 'Could not create account'); return; }
+  S._agEmail = email;
+  $('ag-step-register').style.display = 'none';
+  $('ag-step-otp').style.display = '';
+  toast(`Account created! ${r.data.trialDays}-day trial started. Code sent to your email.`);
+  setTimeout(() => $('ag-otp').focus(), 50);
+}
+
+async function submitAgEmail() {
+  const email = $('ag-email').value.trim().toLowerCase();
+  if (!email) { toast('Enter your email'); return; }
+  S._agEmail = email;
+  const r = await api({ action: 'checkLoginMethod', email });
+  if (!r.success) { toast(r.error || 'Login failed'); return; }
+  if (r.data.method === 'pin') {
+    $('ag-step-email').style.display = 'none';
+    $('ag-step-pin').style.display = '';
+    setTimeout(() => $('ag-pin').focus(), 50);
+  } else {
+    $('ag-step-email').style.display = 'none';
+    $('ag-step-otp').style.display = '';
+    toast('Verification code sent to your email');
+    setTimeout(() => $('ag-otp').focus(), 50);
+  }
+}
+
+async function submitAgPin() {
+  const pin = $('ag-pin').value.trim();
+  if (!pin) { toast('Enter your PIN'); return; }
+  const r = await api({ action: 'verifyPin', email: S._agEmail, pin });
+  if (!r.success) { toast(r.error || 'Incorrect PIN'); return; }
+  enterAdminDashboard(r.data);
+}
+
+async function submitAgOtp() {
+  const otp = $('ag-otp').value.trim();
+  if (!otp) { toast('Enter the code'); return; }
+  const r = await api({ action: 'verifyOTP', email: S._agEmail, otp });
+  if (!r.success) { toast(r.error || 'Invalid code'); return; }
+  enterAdminDashboard(r.data);
+}
+
+async function resendAgOtp() {
+  const r = await api({ action: 'requestOTP', email: S._agEmail });
+  if (r.success) toast('Code sent');
+  else toast(r.error || 'Could not send code');
+}
+
+function agSwitchToOtp() {
+  $('ag-step-pin').style.display = 'none';
+  $('ag-step-otp').style.display = '';
+  resendAgOtp();
+  setTimeout(() => $('ag-otp').focus(), 50);
+}
+
+function enterAdminDashboard(data) {
+  S.schoolEmail = data.email;
+  S.sessionToken = data.token;
+  S.userName = data.schoolName || 'Admin';
+  closeAdminGate();
+  show('admin');
+  loadSubjects();
+}
+
+function sessionExpired() {
+  S.schoolEmail = null;
+  S.sessionToken = null;
+  show('home');
+  toast('Session expired. Please log in again.');
+}
+
+/* ══ SECURITY / PIN SETTINGS ══ */
+function openPinSettings() {
+  $('ps-pin').value = '';
+  show('pin-settings');
+}
+async function savePin() {
+  const pin = $('ps-pin').value.trim();
+  if (!/^\d{4,6}$/.test(pin)) { toast('PIN must be 4-6 digits'); return; }
+  const r = await api({ action: 'setPin', email: S.schoolEmail, token: S.sessionToken, pin });
+  if (r.success) { toast('PIN saved'); $('ps-pin').value = ''; }
+  else toast(r.error || 'Could not save PIN');
+}
+async function removePinSetting() {
+  if (!await cbtConfirm('Remove PIN', 'You will go back to email verification codes for login. Continue?')) return;
+  const r = await api({ action: 'removePin', email: S.schoolEmail, token: S.sessionToken });
+  if (r.success) toast('PIN removed');
+  else toast(r.error || 'Could not remove PIN');
+}
+
 /* ══ HOME ══ */
 async function submitCode() {
   const code = $('home-code').value.trim().toUpperCase();
   if (!code) { toast('Enter a code first'); return; }
-  if (code === ADM) { S.userName = 'Admin'; show('admin'); loadSubjects(); return; }
   toast('Looking up…');
   const r = await api({ action: 'getQuizByCode', code });
   if (r.success && r.data) startQuiz(r.data.QuizID, r.data.QuizTitle, String(r.data.IsPublic).toLowerCase()==='true', r.data.TimeLimit, r.data.PassMark, r.data.SubjectName || '', r.data.TopicName || '');
