@@ -421,9 +421,61 @@ textarea.inp{min-height:160px;resize:vertical;}
 </head>
 <body>
 
+
 <div id="toast"></div>
 
-<!-- ════════════ HOME ════════════ -->
+<!-- ════════════ GLOBAL LOADER ════════════ -->
+<div id="g-loader" style="
+  position:fixed;inset:0;z-index:99990;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  background:rgba(10,19,86,.72);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);
+  opacity:0;visibility:hidden;
+  transition:opacity .22s ease, visibility .22s ease;
+  pointer-events:none;
+">
+  <div style="position:relative;width:64px;height:64px;">
+    <!-- Outer spinning ring -->
+    <svg viewBox="0 0 64 64" width="64" height="64" style="position:absolute;inset:0;animation:loader-spin 1.1s linear infinite;">
+      <circle cx="32" cy="32" r="28" fill="none"
+        stroke="url(#ls1)" stroke-width="3.5"
+        stroke-linecap="round"
+        stroke-dasharray="120 56"/>
+      <defs>
+        <linearGradient id="ls1" x1="0%" y1="0%" x2="100%" y2="0%">
+          <stop offset="0%"   stop-color="#f5b800"/>
+          <stop offset="100%" stop-color="#e8294a"/>
+        </linearGradient>
+      </defs>
+    </svg>
+    <!-- Inner counter-spin ring -->
+    <svg viewBox="0 0 64 64" width="64" height="64" style="position:absolute;inset:0;animation:loader-spin-rev .8s linear infinite;">
+      <circle cx="32" cy="32" r="18" fill="none"
+        stroke="rgba(47,95,255,.55)" stroke-width="2"
+        stroke-linecap="round"
+        stroke-dasharray="60 54"/>
+    </svg>
+    <!-- Centre dot pulse -->
+    <div style="
+      position:absolute;top:50%;left:50%;
+      width:8px;height:8px;border-radius:50%;
+      background:linear-gradient(135deg,#f5b800,#e8294a);
+      transform:translate(-50%,-50%);
+      animation:loader-dot 1.1s ease-in-out infinite;
+      box-shadow:0 0 10px rgba(245,184,0,.7);
+    "></div>
+  </div>
+</div>
+
+<style>
+@keyframes loader-spin     { to { transform:rotate(360deg); } }
+@keyframes loader-spin-rev { to { transform:rotate(-360deg); } }
+@keyframes loader-dot {
+  0%,100% { transform:translate(-50%,-50%) scale(1);   opacity:1; }
+  50%      { transform:translate(-50%,-50%) scale(1.6); opacity:.6; }
+}
+</style>
+
+
 <div id="s-home" class="screen on">
   <div style="flex:1;display:flex;align-items:center;justify-content:center;background:var(--grad-hero);padding:24px;">
     <div style="width:100%;max-width:360px;">
@@ -880,6 +932,21 @@ const S = {
 /* ══ Utils ══ */
 const $ = id => document.getElementById(id);
 
+/* ── Global loader ── */
+var _loadCount = 0;
+function gLoad() {
+  _loadCount++;
+  var el = document.getElementById('g-loader');
+  if (el) { el.style.opacity='1'; el.style.visibility='visible'; el.style.pointerEvents='auto'; }
+}
+function gUnload() {
+  _loadCount = Math.max(0, _loadCount - 1);
+  if (_loadCount > 0) return;
+  var el = document.getElementById('g-loader');
+  if (el) { el.style.opacity='0'; el.style.visibility='hidden'; el.style.pointerEvents='none'; }
+}
+
+
 function show(id) {
   document.querySelectorAll('.screen').forEach(s => s.classList.remove('on'));
   $('s-' + id).classList.add('on');
@@ -901,6 +968,7 @@ function esc(s) {
 
 async function api(params, timeoutMs) {
   timeoutMs = timeoutMs || 20000;
+  gLoad();
   try {
     const controller = new AbortController();
     const tid = setTimeout(function() { controller.abort(); }, timeoutMs);
@@ -910,6 +978,8 @@ async function api(params, timeoutMs) {
   } catch(e) {
     if (e.name === 'AbortError') return { success: false, error: 'Request timed out. Check your connection.' };
     return { success: false, error: e.toString() };
+  } finally {
+    gUnload();
   }
 }
 
@@ -925,6 +995,7 @@ async function apiBatch(quizId, questions) {
 }
 
 async function apiPost(body) {
+  gLoad();
   try {
     const r = await fetch(GAS, {
       method: 'POST',
@@ -933,6 +1004,7 @@ async function apiPost(body) {
     });
     return await r.json();
   } catch(e) { return { success: false, error: e.toString() }; }
+  finally { gUnload(); }
 }
 
 /* Resize/compress an image file to a max dimension, return base64 dataURL */
@@ -1422,14 +1494,14 @@ async function startWebcamProctoring() {
     }
 
     if (S.faceModelReady) {
-      setPipStatus('loading', '🔄 Starting…');
+      setPipStatus('loading');
       // Short warm-up delay so video stream has frames
       await new Promise(r => setTimeout(r, 1500));
-      setPipStatus('ok', '✅ Face detected');
+      setPipStatus('ok');
       scheduleFaceChecks();
     } else {
       // Model unavailable — fall back to motion-based detection
-      setPipStatus('warn', '⚠️ Basic mode');
+      setPipStatus('warn');
       scheduleMotionFallback();
     }
   } catch(err) {
@@ -1471,33 +1543,14 @@ function buildProctoringUI(stream) {
   pip.appendChild(vid);
   _faceVideo = vid;
 
-  // Status bar under the video feed
-  var bar = document.createElement('div');
-  bar.id = 'proctor-bar';
-  bar.style.cssText =
-    'position:absolute;bottom:0;left:0;right:0;' +
-    'font-size:.45rem;font-weight:700;letter-spacing:.5px;text-transform:uppercase;' +
-    'text-align:center;padding:2px 0;' +
-    'background:rgba(28,201,126,.85);color:#fff;';
-  bar.textContent = '● CAM ON';
-  pip.appendChild(bar);
-
   document.body.appendChild(pip);
 }
 
-function setPipStatus(type, label) {
+function setPipStatus(type) {
   var pip = document.getElementById('proctor-pip');
-  var bar = document.getElementById('proctor-bar');
-  if (!pip || !bar) return;
-  var colors = { ok:'var(--green)', warn:'var(--yellow)', danger:'var(--red)', loading:'var(--blue-mid)' };
-  var col = colors[type] || colors.ok;
-  pip.style.borderColor = col;
-  bar.style.background  = col.startsWith('var') ? col.replace('var(','').replace(')','') : col;
-  // Use inline colour directly for border
-  var resolvedColors = { 'var(--green)':'#1cc97e','var(--yellow)':'#f5b800','var(--red)':'#e8294a','var(--blue-mid)':'#1a3aad' };
-  pip.style.borderColor = resolvedColors[col] || col;
-  bar.style.background  = resolvedColors[col] || col;
-  bar.textContent = label;
+  if (!pip) return;
+  var colors = { ok:'#1cc97e', warn:'#f5b800', danger:'#e8294a', loading:'#1a3aad' };
+  pip.style.borderColor = colors[type] || colors.ok;
 }
 
 /* ── AI Face Detection Loop ── */
@@ -1520,12 +1573,12 @@ async function runFaceCheck() {
       S.multiFaceStreak = 0;
       if (S.noFaceStreak === 2) {
         // Second consecutive miss — go yellow
-        setPipStatus('warn', '⚠️ No face');
+        setPipStatus('warn');
       }
       if (S.noFaceStreak >= 4) {
         // ~12 seconds with no face — flag it
         S.noFaceStreak = 0;
-        setPipStatus('danger', '🚫 Absent');
+        setPipStatus('danger');
         recordCheatViolation('No face detected — please stay in front of the camera.');
       }
     } else if (count === 1) {
@@ -1533,12 +1586,12 @@ async function runFaceCheck() {
       S.noFaceStreak   = Math.max(0, S.noFaceStreak - 1);
       S.multiFaceStreak = 0;
       var conf = Math.round((detections[0].score || 1) * 100);
-      setPipStatus('ok', '✅ ' + conf + '% conf');
+      setPipStatus('ok');
     } else {
       // Multiple faces — possible collaboration
       S.noFaceStreak = 0;
       S.multiFaceStreak++;
-      setPipStatus('warn', '⚠️ ' + count + ' faces');
+      setPipStatus('warn');
       if (S.multiFaceStreak >= 3) {
         // 3 consecutive checks with multiple faces
         S.multiFaceStreak = 0;
@@ -1583,15 +1636,15 @@ function motionFallbackCheck() {
   _prevPixels = pixels;
   if (avgBright < 8) {
     S.noFaceStreak++;
-    setPipStatus('danger', '🚫 Covered');
+    setPipStatus('danger');
     if (S.noFaceStreak >= 2) { S.noFaceStreak = 0; recordCheatViolation('Camera appears to be covered.'); }
   } else if (motionScore < 8 && _prevPixels) {
     S.noFaceStreak++;
-    setPipStatus('warn', '⚠️ No motion');
+    setPipStatus('warn');
     if (S.noFaceStreak >= 4) { S.noFaceStreak = 0; recordCheatViolation('No movement detected — are you still there?'); }
   } else {
     S.noFaceStreak = Math.max(0, S.noFaceStreak - 1);
-    setPipStatus('ok', '● Active');
+    setPipStatus('ok');
   }
 }
 
@@ -1627,6 +1680,7 @@ async function markTheoryWithAI(i) {
     (q.Explanation ? '\nContext: ' + q.Explanation : '') +
     '\nStudent Answer: ' + (studentAns || '(no answer given)') +
     '\n\nRespond in this exact JSON format (no markdown):\n{"score":"X/10","verdict":"Excellent|Good|Partial|Poor|No Answer","feedback":"2-3 sentences","keyPoints":"brief key points"}';
+  gLoad();
   try {
     const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
       method: 'POST',
@@ -1648,7 +1702,7 @@ async function markTheoryWithAI(i) {
       (result.keyPoints ? '<div style="font-size:.75rem;color:var(--text-secondary);border-top:1px dashed var(--border);padding-top:6px;">' + result.keyPoints + '</div>' : '');
   } catch(e) {
     box.innerHTML = '<span style="color:var(--red)">Could not mark: ' + e.message + '</span>';
-  }
+  } finally { gUnload(); }
 }
 
 /* ══ RESULTS ══ */
@@ -1848,6 +1902,7 @@ Each object must have: "question"(string), "type"("mcq" or "theory"), "options"(
 MCQ can have 2-10 options. Auto-detect theory questions.
 Text:
 ${raw}`;
+  gLoad();
   try {
     const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
       method:'POST',
@@ -1855,10 +1910,10 @@ ${raw}`;
       body:JSON.stringify({model:'llama-3.3-70b-versatile',messages:[{role:'user',content:prompt}],temperature:0.1,max_tokens:4096})
     });
     const d = await res.json();
-    if (d.error) { statusEl.textContent = 'Error: '+d.error.message; return; }
+    if (d.error) { gUnload(); statusEl.textContent = 'Error: '+d.error.message; return; }
     let txt = d.choices[0].message.content.trim().replace(/```json|```/g,'').trim();
     const qs = JSON.parse(txt);
-    if (!Array.isArray(qs)||!qs.length) { statusEl.textContent = 'No questions found'; return; }
+    if (!Array.isArray(qs)||!qs.length) { gUnload(); statusEl.textContent = 'No questions found'; return; }
     qs.forEach(q => S.pendingQs.push({
       question:q.question, questionType:q.type||'mcq', options:q.options||[],
       correctAnswer:q.correctAnswer||'A', explanation:q.explanation||'',
@@ -1869,7 +1924,7 @@ ${raw}`;
     $('qprev-ai-panel').style.display = 'none';
     renderPreviewList();
     toast(qs.length + ' questions added to list');
-  } catch(e) { statusEl.textContent = 'Failed: '+e.message; }
+  } catch(e) { statusEl.textContent = 'Failed: '+e.message; } finally { gUnload(); }
 }
 
 /* ── Open single question editor ── */
@@ -2123,6 +2178,7 @@ Rules:
 
 Text:
 ${raw}`;
+  gLoad();
   try {
     const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
       method: 'POST',
@@ -2130,10 +2186,10 @@ ${raw}`;
       body: JSON.stringify({ model: 'llama-3.3-70b-versatile', messages: [{ role:'user', content:prompt }], temperature:0.1, max_tokens:4096 })
     });
     const d = await res.json();
-    if (d.error) { $('ai-status').textContent = 'AI error: ' + d.error.message; return; }
+    if (d.error) { gUnload(); $('ai-status').textContent = 'AI error: ' + d.error.message; return; }
     let txt = d.choices[0].message.content.trim().replace(/```json|```/g,'').trim();
     const qs = JSON.parse(txt);
-    if (!Array.isArray(qs) || !qs.length) { $('ai-status').textContent = 'No questions found'; return; }
+    if (!Array.isArray(qs) || !qs.length) { gUnload(); $('ai-status').textContent = 'No questions found'; return; }
     $('ai-status').textContent = '';
     $('ai-text').value = '';
     // Normalize and push to pending
@@ -2150,7 +2206,7 @@ ${raw}`;
     });
     S.editQMode = 'new';
     openPreviewScreen($('cq-ctx').textContent);
-  } catch(e) { $('ai-status').textContent = 'Failed: ' + e.message; }
+  } catch(e) { gUnload(); $('ai-status').textContent = 'Failed: ' + e.message; }
 }
 
 /* ── Manual Add → Preview ── */
@@ -2457,6 +2513,7 @@ Rules:
 
 Text:
 ${raw}`;
+  gLoad();
   try {
     const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
       method: 'POST',
@@ -2464,14 +2521,14 @@ ${raw}`;
       body: JSON.stringify({ model: 'llama-3.3-70b-versatile', messages: [{ role:'user', content:prompt }], temperature:0.1, max_tokens:4096 })
     });
     const d = await res.json();
-    if (d.error) { $('ai-status').textContent = 'AI error: ' + d.error.message; return; }
+    if (d.error) { gUnload(); $('ai-status').textContent = 'AI error: ' + d.error.message; return; }
     let txt = d.choices[0].message.content.trim().replace(/```json|```/g,'').trim();
     const qs = JSON.parse(txt);
-    if (!Array.isArray(qs) || !qs.length) { $('ai-status').textContent = 'No questions found'; return; }
+    if (!Array.isArray(qs) || !qs.length) { gUnload(); $('ai-status').textContent = 'No questions found'; return; }
     S.aiQs = qs;
     $('ai-status').textContent = '';
     renderAIPreview();
-  } catch(e) { $('ai-status').textContent = 'Failed: ' + e.message; }
+  } catch(e) { gUnload(); $('ai-status').textContent = 'Failed: ' + e.message; }
 }
 
 function renderAIPreview() {
