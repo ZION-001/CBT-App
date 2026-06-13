@@ -4,6 +4,8 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
 <title>CBT App</title>
+<!-- face-api.js for AI face detection proctoring -->
+<script src="https://cdn.jsdelivr.net/npm/@vladmandic/face-api/dist/face-api.js"></script>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Sora:wght@600;700;800&display=swap');
 
@@ -865,7 +867,14 @@ const S = {
   editQMode: 'new',  // 'new' | 'existing'
   // Anti-cheat
   cheatWarnings: 0,
-  cheatAutoSubmit: false
+  cheatAutoSubmit: false,
+  // Webcam proctoring
+  webcamStream: null,
+  webcamInterval: null,
+  faceModelReady: false,
+  faceDetector: null,
+  noFaceStreak: 0,
+  multiFaceStreak: 0
 };
 
 /* ══ Utils ══ */
@@ -1058,7 +1067,6 @@ async function beginQuiz() {
 
 async function loadAndStartQuiz() {
   show('quiz');
-  // Build quiz header: show subject → topic → title
   var headerParts = [];
   if (S.quiz.subject) headerParts.push(esc(S.quiz.subject));
   if (S.quiz.topic)   headerParts.push(esc(S.quiz.topic));
@@ -1222,7 +1230,7 @@ function initAntiCheat() {
   // ── Keyboard shortcuts that could help cheating ──
   document.addEventListener('keydown', blockCheatKeys);
 
-  // ── Webcam proctoring ──
+  // ── Webcam proctoring (AI face detection) ──
   startWebcamProctoring();
 }
 
@@ -1372,102 +1380,192 @@ function disableSelection() {
 }
 
 /* ══════════════════════════════════════════════════════
-   WEBCAM PROCTORING
+   WEBCAM PROCTORING — AI Face Detection (face-api.js)
 ══════════════════════════════════════════════════════ */
 
-var _webcamStream    = null;
-var _webcamVideo     = null;
-var _webcamCanvas    = null;
-var _webcamInterval  = null;
-var _prevPixels      = null;
-var _absenceStreak   = 0;   // consecutive checks with no face-like motion
-var _ABSENCE_THRESH  = 6;   // checks (~18 s) before flagging absence
-var _MOTION_THRESH   = 30;  // avg pixel diff to count as meaningful motion
+var FACE_MODEL_URL = 'https://cdn.jsdelivr.net/npm/@vladmandic/face-api/model/';
+var _faceVideo     = null;
 
-function startWebcamProctoring() {
-  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) return; // not supported
+/* Load the tiny model once (190 KB). Called early so it's ready by quiz time. */
+async function preloadFaceModel() {
+  if (S.faceModelReady) return;
+  try {
+    if (typeof faceapi === 'undefined') return;
+    await faceapi.nets.tinyFaceDetector.loadFromUri(FACE_MODEL_URL);
+    S.faceDetector = new faceapi.TinyFaceDetectorOptions({ inputSize: 160, scoreThreshold: 0.4 });
+    S.faceModelReady = true;
+  } catch(e) {
+    console.warn('face-api model load failed:', e);
+  }
+}
 
-  navigator.mediaDevices.getUserMedia({ video: { width:160, height:120, facingMode:'user' }, audio:false })
-    .then(function(stream) {
-      _webcamStream = stream;
-      buildWebcamUI(stream);
-      scheduleWebcamChecks();
-    })
-    .catch(function(err) {
-      // Denied or unavailable — show a one-time notice but do NOT count as violation
-      showCameraNotice(err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError');
+/* Start preloading model after page idle */
+if (document.readyState === 'complete') { setTimeout(preloadFaceModel, 1500); }
+else { window.addEventListener('load', function() { setTimeout(preloadFaceModel, 1500); }); }
+
+async function startWebcamProctoring() {
+  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) return;
+
+  try {
+    var stream = await navigator.mediaDevices.getUserMedia({
+      video: { width: 320, height: 240, facingMode: 'user' }, audio: false
     });
+    S.webcamStream = stream;
+    buildProctoringUI(stream);
+
+    // If model not ready yet, wait up to 10 s
+    var waited = 0;
+    while (!S.faceModelReady && waited < 10000) {
+      await new Promise(r => setTimeout(r, 500));
+      waited += 500;
+      if (!S.faceModelReady) await preloadFaceModel();
+    }
+
+    if (S.faceModelReady) {
+      setPipStatus('loading', '🔄 Starting…');
+      // Short warm-up delay so video stream has frames
+      await new Promise(r => setTimeout(r, 1500));
+      setPipStatus('ok', '✅ Face detected');
+      scheduleFaceChecks();
+    } else {
+      // Model unavailable — fall back to motion-based detection
+      setPipStatus('warn', '⚠️ Basic mode');
+      scheduleMotionFallback();
+    }
+  } catch(err) {
+    showCameraNotice(err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError');
+  }
 }
 
 function stopWebcamProctoring() {
-  clearInterval(_webcamInterval);
-  _webcamInterval = null;
-  _prevPixels = null;
-  _absenceStreak = 0;
-  if (_webcamStream) {
-    _webcamStream.getTracks().forEach(function(t) { t.stop(); });
-    _webcamStream = null;
+  clearInterval(S.webcamInterval);
+  S.webcamInterval = null;
+  S.noFaceStreak   = 0;
+  S.multiFaceStreak = 0;
+  if (S.webcamStream) {
+    S.webcamStream.getTracks().forEach(t => t.stop());
+    S.webcamStream = null;
   }
-  // Remove UI
   var pip = document.getElementById('proctor-pip');
   if (pip) pip.remove();
   var notice = document.getElementById('proctor-notice');
   if (notice) notice.remove();
+  _faceVideo = null;
 }
 
-function buildWebcamUI(stream) {
-  // Small picture-in-picture feed fixed to top-right during quiz
+/* ── UI ── */
+function buildProctoringUI(stream) {
   var pip = document.createElement('div');
   pip.id = 'proctor-pip';
   pip.style.cssText =
-    'position:fixed;top:58px;right:10px;z-index:9000;' +
-    'width:64px;height:48px;border-radius:8px;overflow:hidden;' +
-    'border:2px solid var(--green);box-shadow:0 2px 12px rgba(0,0,0,.4);' +
-    'background:#000;opacity:.85;';
+    'position:fixed;top:60px;right:10px;z-index:9000;' +
+    'width:70px;height:52px;border-radius:10px;overflow:hidden;' +
+    'border:2.5px solid var(--green);box-shadow:0 2px 14px rgba(0,0,0,.45);' +
+    'background:#000;';
 
   var vid = document.createElement('video');
   vid.id = 'proctor-video';
-  vid.autoplay = true;
-  vid.muted = true;
-  vid.playsInline = true;
-  vid.style.cssText = 'width:100%;height:100%;object-fit:cover;transform:scaleX(-1);';
+  vid.autoplay = true; vid.muted = true; vid.playsInline = true;
+  vid.style.cssText = 'width:100%;height:100%;object-fit:cover;transform:scaleX(-1);display:block;';
   vid.srcObject = stream;
   pip.appendChild(vid);
+  _faceVideo = vid;
 
-  // Green dot indicator
-  var dot = document.createElement('div');
-  dot.id = 'proctor-dot';
-  dot.title = 'Camera active — proctoring on';
-  dot.style.cssText =
-    'position:absolute;bottom:3px;right:3px;width:8px;height:8px;' +
-    'border-radius:50%;background:var(--green);' +
-    'box-shadow:0 0 6px var(--green);animation:pulse 2s infinite;';
-  pip.appendChild(dot);
+  // Status bar under the video feed
+  var bar = document.createElement('div');
+  bar.id = 'proctor-bar';
+  bar.style.cssText =
+    'position:absolute;bottom:0;left:0;right:0;' +
+    'font-size:.45rem;font-weight:700;letter-spacing:.5px;text-transform:uppercase;' +
+    'text-align:center;padding:2px 0;' +
+    'background:rgba(28,201,126,.85);color:#fff;';
+  bar.textContent = '● CAM ON';
+  pip.appendChild(bar);
 
   document.body.appendChild(pip);
-  _webcamVideo = vid;
-
-  // Off-screen canvas for motion analysis
-  var cv = document.createElement('canvas');
-  cv.width = 80; cv.height = 60;
-  _webcamCanvas = cv;
 }
 
-function scheduleWebcamChecks() {
-  // Check every 3 seconds
-  _webcamInterval = setInterval(function() {
-    if (!$('s-quiz') || !$('s-quiz').classList.contains('on')) return;
-    analyseFrame();
-  }, 3000);
+function setPipStatus(type, label) {
+  var pip = document.getElementById('proctor-pip');
+  var bar = document.getElementById('proctor-bar');
+  if (!pip || !bar) return;
+  var colors = { ok:'var(--green)', warn:'var(--yellow)', danger:'var(--red)', loading:'var(--blue-mid)' };
+  var col = colors[type] || colors.ok;
+  pip.style.borderColor = col;
+  bar.style.background  = col.startsWith('var') ? col.replace('var(','').replace(')','') : col;
+  // Use inline colour directly for border
+  var resolvedColors = { 'var(--green)':'#1cc97e','var(--yellow)':'#f5b800','var(--red)':'#e8294a','var(--blue-mid)':'#1a3aad' };
+  pip.style.borderColor = resolvedColors[col] || col;
+  bar.style.background  = resolvedColors[col] || col;
+  bar.textContent = label;
 }
 
-function analyseFrame() {
-  if (!_webcamVideo || !_webcamCanvas || _webcamVideo.readyState < 2) return;
-  var ctx = _webcamCanvas.getContext('2d');
-  ctx.drawImage(_webcamVideo, 0, 0, 80, 60);
+/* ── AI Face Detection Loop ── */
+function scheduleFaceChecks() {
+  // Run every 3 seconds — fast enough to catch absence, slow enough to not drain battery
+  S.webcamInterval = setInterval(runFaceCheck, 3000);
+}
+
+async function runFaceCheck() {
+  if (!$('s-quiz') || !$('s-quiz').classList.contains('on')) return;
+  if (!_faceVideo || _faceVideo.readyState < 2 || !S.faceModelReady) return;
+
+  try {
+    var detections = await faceapi.detectAllFaces(_faceVideo, S.faceDetector);
+    var count = detections.length;
+
+    if (count === 0) {
+      // No face detected
+      S.noFaceStreak++;
+      S.multiFaceStreak = 0;
+      if (S.noFaceStreak === 2) {
+        // Second consecutive miss — go yellow
+        setPipStatus('warn', '⚠️ No face');
+      }
+      if (S.noFaceStreak >= 4) {
+        // ~12 seconds with no face — flag it
+        S.noFaceStreak = 0;
+        setPipStatus('danger', '🚫 Absent');
+        recordCheatViolation('No face detected — please stay in front of the camera.');
+      }
+    } else if (count === 1) {
+      // Exactly one face — all good
+      S.noFaceStreak   = Math.max(0, S.noFaceStreak - 1);
+      S.multiFaceStreak = 0;
+      var conf = Math.round((detections[0].score || 1) * 100);
+      setPipStatus('ok', '✅ ' + conf + '% conf');
+    } else {
+      // Multiple faces — possible collaboration
+      S.noFaceStreak = 0;
+      S.multiFaceStreak++;
+      setPipStatus('warn', '⚠️ ' + count + ' faces');
+      if (S.multiFaceStreak >= 3) {
+        // 3 consecutive checks with multiple faces
+        S.multiFaceStreak = 0;
+        recordCheatViolation('Multiple faces detected — only the examinee should be visible.');
+      }
+    }
+  } catch(e) {
+    // Detection error — don't penalise, just note
+    console.warn('Face detection error:', e);
+  }
+}
+
+/* ── Motion Fallback (when AI model unavailable) ── */
+var _fallbackCanvas = null, _prevPixels = null;
+
+function scheduleMotionFallback() {
+  _fallbackCanvas = document.createElement('canvas');
+  _fallbackCanvas.width = 80; _fallbackCanvas.height = 60;
+  S.webcamInterval = setInterval(motionFallbackCheck, 4000);
+}
+
+function motionFallbackCheck() {
+  if (!$('s-quiz') || !$('s-quiz').classList.contains('on')) return;
+  if (!_faceVideo || _faceVideo.readyState < 2) return;
+  var ctx = _fallbackCanvas.getContext('2d');
+  ctx.drawImage(_faceVideo, 0, 0, 80, 60);
   var data = ctx.getImageData(0, 0, 80, 60).data;
-
-  // Compute brightness per pixel (greyscale) for simple presence detection
   var pixels = new Uint8Array(80 * 60);
   var total = 0;
   for (var i = 0; i < pixels.length; i++) {
@@ -1476,8 +1574,6 @@ function analyseFrame() {
     total += pixels[i];
   }
   var avgBright = total / pixels.length;
-
-  // Motion diff vs previous frame
   var motionScore = 0;
   if (_prevPixels) {
     var diff = 0;
@@ -1485,59 +1581,41 @@ function analyseFrame() {
     motionScore = diff / pixels.length;
   }
   _prevPixels = pixels;
-
-  // Heuristic: if average brightness is very low OR very uniform and no motion → possible absence
-  var isBlank   = avgBright < 8;                    // camera covered / very dark
-  var noMotion  = _prevPixels && motionScore < _MOTION_THRESH;
-
-  if (isBlank) {
-    _absenceStreak++;
-    updatePipBorder('var(--red)');
-    if (_absenceStreak >= 2) {
-      _absenceStreak = 0;
-      recordCheatViolation('Camera appears covered or blocked.');
-    }
-  } else if (noMotion && avgBright > 8) {
-    _absenceStreak++;
-    if (_absenceStreak >= _ABSENCE_THRESH) {
-      _absenceStreak = 0;
-      recordCheatViolation('No movement detected — are you still there?');
-    }
-    updatePipBorder('var(--yellow)');
+  if (avgBright < 8) {
+    S.noFaceStreak++;
+    setPipStatus('danger', '🚫 Covered');
+    if (S.noFaceStreak >= 2) { S.noFaceStreak = 0; recordCheatViolation('Camera appears to be covered.'); }
+  } else if (motionScore < 8 && _prevPixels) {
+    S.noFaceStreak++;
+    setPipStatus('warn', '⚠️ No motion');
+    if (S.noFaceStreak >= 4) { S.noFaceStreak = 0; recordCheatViolation('No movement detected — are you still there?'); }
   } else {
-    _absenceStreak = Math.max(0, _absenceStreak - 1);
-    updatePipBorder('var(--green)');
+    S.noFaceStreak = Math.max(0, S.noFaceStreak - 1);
+    setPipStatus('ok', '● Active');
   }
-}
-
-function updatePipBorder(color) {
-  var pip = document.getElementById('proctor-pip');
-  if (pip) pip.style.borderColor = color;
-  var dot = document.getElementById('proctor-dot');
-  if (dot) dot.style.background = color;
 }
 
 function showCameraNotice(wasDenied) {
   var notice = document.createElement('div');
   notice.id = 'proctor-notice';
   notice.style.cssText =
-    'position:fixed;top:58px;right:10px;z-index:9000;' +
-    'max-width:180px;background:rgba(13,27,110,.92);color:#fff;' +
-    'border-radius:8px;padding:8px 10px;font-size:.65rem;line-height:1.4;' +
+    'position:fixed;top:60px;right:10px;z-index:9000;' +
+    'max-width:190px;background:rgba(13,27,110,.93);color:#fff;' +
+    'border-radius:10px;padding:10px 12px 10px 10px;font-size:.67rem;line-height:1.5;' +
     'border:1.5px solid rgba(255,255,255,.2);box-shadow:var(--shadow-md);';
   notice.innerHTML = wasDenied
-    ? '📷 Camera access denied.<br>Proctoring disabled.<br><span style="opacity:.65">Allow camera in browser settings for full proctoring.</span>'
+    ? '📷 <strong>Camera blocked</strong><br>Proctoring is disabled.<br><span style="opacity:.65;font-size:.6rem;">Allow camera access in your browser settings to enable proctoring.</span>'
     : '📷 Camera unavailable.<br>Proctoring disabled.';
   var close = document.createElement('button');
   close.textContent = '✕';
-  close.style.cssText = 'position:absolute;top:4px;right:6px;background:none;border:none;color:#fff;cursor:pointer;font-size:.75rem;';
+  close.style.cssText = 'position:absolute;top:5px;right:7px;background:none;border:none;color:#fff;cursor:pointer;font-size:.8rem;line-height:1;';
   close.onclick = function() { notice.remove(); };
   notice.appendChild(close);
   document.body.appendChild(notice);
-  setTimeout(function() { if (notice.parentNode) notice.remove(); }, 8000);
+  setTimeout(function() { if (notice.parentNode) notice.remove(); }, 9000);
 }
 
-/* ══ AI THEORY MARKING ══ */
+
 async function markTheoryWithAI(i) {
   const q = S.Qs[i];
   const studentAns = S.ans[i] || '';
