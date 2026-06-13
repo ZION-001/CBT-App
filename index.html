@@ -925,16 +925,19 @@ const MAX_CELL_CHARS = 45000;
 
 async function uploadQuestionImage(file) {
   // Try progressively smaller/lower-quality until it fits in a sheet cell
+  // Also keep well under GAS POST body limit (~100KB after JSON overhead)
+  const MAX_POST = 80000;
+  const limit = Math.min(MAX_CELL_CHARS, MAX_POST);
   const attempts = [
-    [700, 0.6], [500, 0.5], [400, 0.4], [300, 0.35], [220, 0.3]
+    [600, 0.6], [450, 0.5], [350, 0.4], [250, 0.35], [180, 0.3], [130, 0.25]
   ];
   for (const [dim, q] of attempts) {
     const dataUrl = await resizeImage(file, dim, q);
-    if (dataUrl.length <= MAX_CELL_CHARS) {
+    if (dataUrl.length <= limit) {
       return { success: true, data: { url: dataUrl } };
     }
   }
-  return { success: false, error: 'Image too large/complex even after compression. Try a simpler or cropped image.' };
+  return { success: false, error: 'Image too large even after compression. Please crop or use a smaller image.' };
 }
 
 function toggleIF(id) {
@@ -1500,7 +1503,8 @@ function closeEditQ() {
 }
 
 async function updateQuestionOnServer(q) {
-  return await api({ action: 'updateQuestion', question: JSON.stringify(q) });
+  // Must use POST — question may contain base64 image which is too large for GET
+  return await apiPost({ action: 'updateQuestion', question: JSON.stringify(q) });
 }
 
 /* ── Save ALL pending questions ── */
