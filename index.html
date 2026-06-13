@@ -6,7 +6,7 @@
 <title>CBT App</title>
 <!-- face-api.js for AI face detection proctoring -->
 <script src="https://cdn.jsdelivr.net/npm/@vladmandic/face-api/dist/face-api.js"></script>
-<script src="https://js.paystack.co/v1/inline.js"></script>
+<script src="https://js.paystack.co/v2/inline.js"></script>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Sora:wght@600;700;800&display=swap');
 
@@ -650,9 +650,8 @@ input, textarea, select, .inp, .sel {
     <div style="width:100%;max-width:360px;">
       <!-- School banner (shown when opened via school link) -->
       <div id="home-school-banner" style="display:none;text-align:center;margin-bottom:18px;">
-        <div style="display:inline-block;background:rgba(255,255,255,.12);backdrop-filter:blur(8px);border:1px solid rgba(255,255,255,.25);border-radius:50px;padding:7px 20px;">
-          <div style="font-size:.55rem;font-weight:700;letter-spacing:2.5px;text-transform:uppercase;color:rgba(255,255,255,.55);margin-bottom:2px;">Powered by</div>
-          <div id="home-school-name" style="font-family:'Sora',sans-serif;font-size:.95rem;font-weight:700;color:#fff;letter-spacing:.5px;"></div>
+        <div style="display:inline-block;background:rgba(255,255,255,.12);backdrop-filter:blur(8px);border:1px solid rgba(255,255,255,.25);border-radius:50px;padding:8px 22px;">
+          <div id="home-school-name" style="font-family:'Sora',sans-serif;font-size:1rem;font-weight:700;color:#fff;letter-spacing:.5px;"></div>
         </div>
       </div>
       <!-- Hero card -->
@@ -863,7 +862,7 @@ input, textarea, select, .inp, .sel {
       <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
         <div id="profile-plan-badge" style="font-size:.6rem;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;padding:4px 12px;border-radius:50px;background:var(--green);color:#fff;">Active</div>
         <div id="profile-days" style="font-size:.72rem;color:rgba(255,255,255,.75);font-weight:500;">— days left</div>
-        <button onclick="openSubscription()" style="margin-left:auto;background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.3);color:#fff;font-size:.65rem;font-weight:700;letter-spacing:1px;text-transform:uppercase;padding:5px 12px;border-radius:50px;cursor:pointer;">⚡ Subscribe</button>
+        <button onclick="openSubscription()" style="margin-left:auto;background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.3);color:#fff;font-size:.65rem;font-weight:700;letter-spacing:1px;text-transform:uppercase;padding:5px 12px;border-radius:50px;cursor:pointer;">Subscribe</button>
       </div>
       <div id="profile-email" style="font-size:.62rem;color:rgba(255,255,255,.4);margin-top:6px;">—</div>
     </div>
@@ -1642,23 +1641,26 @@ function initiatePayment() {
   if (!S_selectedPlan) return;
   if (!S.schoolEmail) { toast('Session expired. Please log in again.'); return; }
 
-  const handler = PaystackPop.setup({
+  if (typeof PaystackPop === 'undefined') {
+    toast('Payment system not loaded. Check your connection and try again.');
+    return;
+  }
+
+  const paystackPop = new PaystackPop();
+  paystackPop.newTransaction({
     key: PAYSTACK_PUBLIC,
     email: S.schoolEmail,
     amount: PLAN_PRICES[S_selectedPlan],
     currency: 'NGN',
     ref: 'CBT-' + Date.now() + '-' + Math.random().toString(36).slice(2,7).toUpperCase(),
     label: 'CBT App — ' + S_selectedPlan.charAt(0).toUpperCase() + S_selectedPlan.slice(1) + ' Plan',
-    onClose: function() {
-      toast('Payment cancelled.');
-    },
-    callback: async function(response) {
+    onSuccess: async function(transaction) {
       toast('Payment received! Verifying…');
       const r = await api({
         action: 'verifyAndActivatePlan',
         email: S.schoolEmail,
         token: S.sessionToken,
-        reference: response.reference,
+        reference: transaction.reference,
         plan: S_selectedPlan
       });
       if (r.success) {
@@ -1669,9 +1671,11 @@ function initiatePayment() {
       } else {
         toast('Verification failed: ' + (r.error || 'Contact support'));
       }
+    },
+    onCancel: function() {
+      toast('Payment cancelled.');
     }
   });
-  handler.openIframe();
 }
 
 function sessionExpired() {
