@@ -423,6 +423,24 @@ textarea.inp{min-height:160px;resize:vertical;}
 .math{font-style:italic;}
 .mathd{text-align:center;margin:8px 0;font-style:italic;}
 @media(min-width:600px){.page{max-width:600px;margin:0 auto;}}
+/* Kill browser autofill white background */
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus,
+input:-webkit-autofill:active {
+  -webkit-box-shadow: 0 0 0 999px rgba(0,0,0,.55) inset !important;
+  box-shadow: 0 0 0 999px rgba(0,0,0,.55) inset !important;
+  -webkit-text-fill-color: #fff !important;
+  caret-color: #fff !important;
+}
+#s-home input:-webkit-autofill,
+#s-home input:-webkit-autofill:focus,
+#s-name-entry input:-webkit-autofill,
+#s-name-entry input:-webkit-autofill:focus {
+  -webkit-box-shadow: 0 0 0 999px rgba(0,0,0,.55) inset !important;
+  -webkit-text-fill-color: #fff !important;
+}
+
 
 /* ── ANIMATED GRADIENTS ── */
 
@@ -527,6 +545,49 @@ input, textarea, select, .inp, .sel {
 
 
 <div id="toast"></div>
+
+<!-- ════════════ CUSTOM MODAL ════════════ -->
+<div id="cbt-modal" style="
+  position:fixed;inset:0;z-index:999999;
+  display:flex;align-items:center;justify-content:center;
+  background:rgba(0,0,0,.45);backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px);
+  opacity:0;visibility:hidden;
+  transition:opacity .2s ease,visibility .2s ease;
+  padding:24px;
+">
+  <div style="
+    width:100%;max-width:320px;
+    background:var(--card);
+    border-radius:18px;
+    overflow:hidden;
+    box-shadow:0 20px 60px rgba(0,0,0,.35);
+    transform:scale(.92);
+    transition:transform .2s ease;
+  " id="cbt-modal-box">
+    <div id="cbt-modal-header" style="
+      padding:18px 20px 14px;
+      background:linear-gradient(135deg,var(--ac1),var(--ac2),var(--ac3));
+    ">
+      <div id="cbt-modal-title" style="font-family:'Sora',sans-serif;font-size:.85rem;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:#fff;"></div>
+    </div>
+    <div id="cbt-modal-body" style="padding:18px 20px;font-size:.9rem;line-height:1.6;color:var(--text-primary);"></div>
+    <div style="display:flex;gap:10px;padding:0 20px 20px;">
+      <button id="cbt-modal-cancel" style="
+        flex:1;padding:11px;border:1.5px solid var(--border);background:transparent;
+        border-radius:10px;font-family:'Inter',sans-serif;font-size:.8rem;font-weight:700;
+        letter-spacing:1px;text-transform:uppercase;color:var(--text-secondary);cursor:pointer;
+      ">Cancel</button>
+      <button id="cbt-modal-ok" style="
+        flex:1;padding:11px;border:none;
+        background:linear-gradient(135deg,var(--ac1),var(--ac2),var(--ac3));
+        border-radius:10px;font-family:'Inter',sans-serif;font-size:.8rem;font-weight:700;
+        letter-spacing:1px;text-transform:uppercase;color:#fff;cursor:pointer;
+        box-shadow:0 4px 14px rgba(0,0,0,.2);
+      ">OK</button>
+    </div>
+  </div>
+</div>
+
 
 <!-- ════════════ GLOBAL LOADER ════════════ -->
 <div id="g-loader" style="
@@ -1198,7 +1259,7 @@ async function loadPublicQuizzes() {
 }
 
 /* ══ QUIZ TAKING ══ */
-function startQuiz(quizId, title, isPublic, timeLimit, passMark, subject, topic) {
+async function startQuiz(quizId, title, isPublic, timeLimit, passMark, subject, topic) {
   // Store quiz info, then go to name entry (unless admin)
   S.quiz = { id: quizId, title, isPublic: isPublic !== false, timeLimit: parseInt(timeLimit) || 0, passMark: parseInt(passMark) || 0, subject: subject || '', topic: topic || '' };
   if (S.userName) {
@@ -1232,7 +1293,7 @@ async function beginQuiz() {
   // One attempt per session
   const attemptedKey = 'attempted_' + S.quiz.id;
   if (sessionStorage.getItem(attemptedKey)) {
-    if (!confirm('You have already attempted this quiz in this session. Start again?')) return;
+    if (!await cbtConfirm('Retry Quiz', 'You have already attempted this quiz in this session. Start again?')) return;
   }
   S.userName = name;
   if (S.quiz.isPublic) {
@@ -1372,10 +1433,10 @@ function pickAns(l) {
 
 function prevQ() { if (S.qi > 0) { S.qi--; renderQ(); } }
 
-function nextQ() {
+async function nextQ() {
   if (S.qi < S.Qs.length - 1) { S.qi++; renderQ(); return; }
   const u = S.ans.filter(a => a === null).length;
-  if (u > 0 && !confirm(`${u} question(s) unanswered. Submit anyway?`)) return;
+  if (u > 0 && !await cbtConfirm('Submit Quiz', `${u} question(s) unanswered. Submit anyway?`)) return;
   showResults();
 }
 
@@ -2190,8 +2251,8 @@ async function saveEditQ() {
   toast('Question updated');
 }
 
-function deleteEditQ() {
-  if (!confirm('Remove this question?')) return;
+async function deleteEditQ() {
+  if (!await cbtConfirm('Remove Question', 'Remove this question?')) return;
   const q = S.pendingQs[S.editQIdx];
   // If already saved, delete on server
   if (S.editQMode === 'existing' && q.QuestionID) {
@@ -2425,7 +2486,7 @@ async function doCreateSubject() {
 
 async function delSubject(id, e) {
   e.stopPropagation();
-  if (!confirm('Delete subject and all its topics/quizzes?')) return;
+  if (!await cbtConfirm('Delete Subject', 'Delete this subject and ALL its topics and quizzes? This cannot be undone.')) return;
   await api({ action: 'deleteSubject', subjectId: id });
   toast('Deleted'); loadSubjects();
 }
@@ -2465,7 +2526,7 @@ async function doCreateTopic() {
 
 async function delTopic(id, e) {
   e.stopPropagation();
-  if (!confirm('Delete topic and all its quizzes?')) return;
+  if (!await cbtConfirm('Delete Topic', 'Delete this topic and ALL its quizzes? This cannot be undone.')) return;
   await api({ action: 'deleteTopic', topicId: id });
   toast('Deleted'); loadTopics();
 }
@@ -2505,7 +2566,7 @@ async function loadQuizzes() {
 
 async function delQuiz(id, e) {
   e.stopPropagation();
-  if (!confirm('Delete this quiz?')) return;
+  if (!await cbtConfirm('Delete Quiz', 'Delete this quiz and all its questions? This cannot be undone.')) return;
   await api({ action: 'deleteQuiz', quizId: id });
   toast('Deleted'); loadQuizzes();
 }
@@ -2828,6 +2889,41 @@ async function saveManualQs() {
 })();
 </script>
 
+<script>
+
+/* ── Custom modal (replaces confirm()) ── */
+function cbtConfirm(title, message) {
+  return new Promise(resolve => {
+    const modal   = document.getElementById('cbt-modal');
+    const box     = document.getElementById('cbt-modal-box');
+    const titleEl = document.getElementById('cbt-modal-title');
+    const bodyEl  = document.getElementById('cbt-modal-body');
+    const okBtn   = document.getElementById('cbt-modal-ok');
+    const cancelBtn = document.getElementById('cbt-modal-cancel');
+
+    titleEl.textContent = title;
+    bodyEl.textContent  = message;
+
+    modal.style.visibility = 'visible';
+    modal.style.opacity    = '1';
+    box.style.transform    = 'scale(1)';
+
+    function close(result) {
+      modal.style.opacity    = '0';
+      box.style.transform    = 'scale(.92)';
+      setTimeout(() => { modal.style.visibility = 'hidden'; }, 200);
+      okBtn.removeEventListener('click', onOk);
+      cancelBtn.removeEventListener('click', onCancel);
+      resolve(result);
+    }
+    function onOk()     { close(true);  }
+    function onCancel() { close(false); }
+    okBtn.addEventListener('click', onOk);
+    cancelBtn.addEventListener('click', onCancel);
+  });
+}
+
+</script>
 <!-- ════════════ ANIMATED GRADIENT ENGINE ════════════ -->
 <script>
 (function() {
