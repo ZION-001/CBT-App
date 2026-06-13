@@ -887,11 +887,18 @@ function esc(s) {
   return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
 
-async function api(params) {
+async function api(params, timeoutMs) {
+  timeoutMs = timeoutMs || 20000;
   try {
-    const r = await fetch(GAS + '?' + new URLSearchParams(params));
+    const controller = new AbortController();
+    const tid = setTimeout(function() { controller.abort(); }, timeoutMs);
+    const r = await fetch(GAS + '?' + new URLSearchParams(params), { signal: controller.signal });
+    clearTimeout(tid);
     return await r.json();
-  } catch(e) { return { success: false, error: e.toString() }; }
+  } catch(e) {
+    if (e.name === 'AbortError') return { success: false, error: 'Request timed out. Check your connection.' };
+    return { success: false, error: e.toString() };
+  }
 }
 
 async function apiBatch(quizId, questions) {
@@ -1707,34 +1714,63 @@ function addManualToPreview() {
 
 /* ── Open Questions for existing quiz (edit mode) ── */
 async function openEditQuestions(quizId, title, e) {
-  e.stopPropagation();
+  if (e) e.stopPropagation();
   S.pendQId = quizId;
   S.editQMode = 'existing';
   S.pendingQs = [];
   $('qprev-ctx').textContent = title;
   $('qprev-save-btn').textContent = 'Save New Questions';
-  show('q-preview');
+  $('qprev-count').textContent = '0';
   $('qprev-list').innerHTML = '<div class="loading">Loading questions…</div>';
-  $('qprev-count').textContent = '...';
+  show('q-preview');
 
-  const r = await api({ action: 'getQuestions', quizId });
-  if (!r.success) { toast('Failed to load questions'); return; }
+  // Retry up to 3 times in case of network blip
+  let r = null;
+  for (let attempt = 1; attempt <= 3; attempt++) {
+    r = await api({ action: 'getQuestions', quizId });
+    if (r.success) break;
+    if (attempt < 3) {
+      $('qprev-list').innerHTML = '<div class="loading">Retrying (' + attempt + '/3)…</div>';
+      await new Promise(res => setTimeout(res, 1200));
+    }
+  }
+
+  if (!r || !r.success) {
+    $('qprev-list').innerHTML = '';
+    var errDiv = document.createElement('div');
+    errDiv.className = 'empty';
+    errDiv.style.color = 'var(--red)';
+    errDiv.innerHTML = 'Failed to load questions. Check connection.';
+    var retryBtn = document.createElement('button');
+    retryBtn.className = 'btn ghost sm';
+    retryBtn.style.marginTop = '10px';
+    retryBtn.textContent = 'Retry';
+    retryBtn.onclick = function() { openEditQuestions(quizId, title); };
+    errDiv.appendChild(retryBtn);
+    $('qprev-list').appendChild(errDiv);
+    toast('Failed to load: ' + (r && r.error || 'network error'));
+    return;
+  }
 
   const LETTERS = 'ABCDEFGHIJ';
-  S.pendingQs = (r.data || []).map(q => {
-    const opts = LETTERS.split('').map(l => q['Option'+l]).filter(v => v && String(v).trim());
+  const rows = Array.isArray(r.data) ? r.data : [];
+  S.pendingQs = rows.map(function(q) {
+    const opts = LETTERS.split('').map(function(l) { return q['Option'+l]; }).filter(function(v) { return v && String(v).trim(); });
     return {
       QuestionID: q.QuestionID,
-      question: q.Question,
+      question: q.Question || '',
       questionType: q.QuestionType || (q.CorrectAnswer === 'THEORY' ? 'theory' : 'mcq'),
       options: opts,
-      correctAnswer: q.CorrectAnswer,
+      correctAnswer: q.CorrectAnswer || '',
       explanation: q.Explanation || '',
       modelAnswer: q.ModelAnswer || '',
       imageUrl: q.ImageURL || ''
     };
   });
+
   renderPreviewList();
+  updateStagedBar();
+  toast(S.pendingQs.length + ' questions loaded');
 }
 
 /* ── Back from preview ── */
