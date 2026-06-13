@@ -981,7 +981,7 @@ async function submitCode() {
   if (code === ADM) { S.userName = 'Admin'; show('admin'); loadSubjects(); return; }
   toast('Looking up…');
   const r = await api({ action: 'getQuizByCode', code });
-  if (r.success && r.data) startQuiz(r.data.QuizID, r.data.QuizTitle, String(r.data.IsPublic).toLowerCase()==='true', r.data.TimeLimit, r.data.PassMark);
+  if (r.success && r.data) startQuiz(r.data.QuizID, r.data.QuizTitle, String(r.data.IsPublic).toLowerCase()==='true', r.data.TimeLimit, r.data.PassMark, r.data.SubjectName || '', r.data.TopicName || '');
   else toast('Code not found. Try again.');
 }
 
@@ -1001,7 +1001,7 @@ async function loadPublicQuizzes() {
         <div class="topic-block">
           <div class="topic-head">${esc(t.TopicName)}</div>
           ${t.quizzes.map(q => `
-            <div class="quiz-row" onclick="startQuiz('${q.QuizID}','${esc(q.QuizTitle).replace(/'/g,"\\'")}',true,${parseInt(q.TimeLimit)||0},${parseInt(q.PassMark)||0})">
+            <div class="quiz-row" onclick="startQuiz('${q.QuizID}','${esc(q.QuizTitle).replace(/'/g,"\\'")}',true,${parseInt(q.TimeLimit)||0},${parseInt(q.PassMark)||0},'${esc(subj.SubjectName).replace(/'/g,"\\'")}','${esc(t.TopicName).replace(/'/g,"\\'")}')">
               <span class="quiz-row-name">${esc(q.QuizTitle)}</span>
               <span style="color:var(--blue-bright);font-size:.9rem;">&#8250;</span>
             </div>
@@ -1013,13 +1013,22 @@ async function loadPublicQuizzes() {
 }
 
 /* ══ QUIZ TAKING ══ */
-function startQuiz(quizId, title, isPublic, timeLimit, passMark) {
+function startQuiz(quizId, title, isPublic, timeLimit, passMark, subject, topic) {
   // Store quiz info, then go to name entry (unless admin)
-  S.quiz = { id: quizId, title, isPublic: isPublic !== false, timeLimit: parseInt(timeLimit) || 0, passMark: parseInt(passMark) || 0 };
+  S.quiz = { id: quizId, title, isPublic: isPublic !== false, timeLimit: parseInt(timeLimit) || 0, passMark: parseInt(passMark) || 0, subject: subject || '', topic: topic || '' };
   if (S.userName) {
     loadAndStartQuiz();
   } else {
-    $('name-entry-quiz-title').textContent = title;
+    // Build the name-entry header: subject → topic → quiz title
+    var headerHTML = '';
+    if (S.quiz.subject) {
+      headerHTML += '<div style="font-size:.6rem;font-weight:700;letter-spacing:2.5px;text-transform:uppercase;color:rgba(255,255,255,.45);margin-bottom:3px;">' + esc(S.quiz.subject) + '</div>';
+    }
+    if (S.quiz.topic) {
+      headerHTML += '<div style="font-size:.65rem;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:rgba(255,255,255,.6);margin-bottom:5px;">' + esc(S.quiz.topic) + '</div>';
+    }
+    headerHTML += '<div style="font-family:\'Sora\',sans-serif;font-size:1.05rem;font-weight:700;line-height:1.4;color:#fff;">' + esc(title) + '</div>';
+    $('name-entry-quiz-title').innerHTML = headerHTML;
     $('user-name-input').value = '';
     // Public quiz -> user may set their own timer. Private -> admin's timer applies, no choice shown.
     if (S.quiz.isPublic) {
@@ -1049,7 +1058,12 @@ async function beginQuiz() {
 
 async function loadAndStartQuiz() {
   show('quiz');
-  $('q-quiz-title').textContent = S.quiz.title;
+  // Build quiz header: show subject → topic → title
+  var headerParts = [];
+  if (S.quiz.subject) headerParts.push(esc(S.quiz.subject));
+  if (S.quiz.topic)   headerParts.push(esc(S.quiz.topic));
+  headerParts.push(esc(S.quiz.title));
+  $('q-quiz-title').innerHTML = headerParts.join(' <span style="opacity:.45;font-weight:400;">›</span> ');
   $('q-opts').innerHTML = '<div class="loading">Loading…</div>';
   const r = await api({ action: 'getQuestions', quizId: S.quiz.id });
   if (!r.success || !r.data?.length) {
@@ -1207,6 +1221,9 @@ function initAntiCheat() {
 
   // ── Keyboard shortcuts that could help cheating ──
   document.addEventListener('keydown', blockCheatKeys);
+
+  // ── Webcam proctoring ──
+  startWebcamProctoring();
 }
 
 function destroyAntiCheat() {
@@ -1219,6 +1236,7 @@ function destroyAntiCheat() {
   document.removeEventListener('cut', blockCopy);
   document.removeEventListener('keydown', blockCheatKeys);
   exitFullscreen();
+  stopWebcamProctoring();
 }
 
 function requestFullscreen() {
@@ -1351,6 +1369,172 @@ function disableSelection() {
     qArea.style.webkitUserSelect = 'none';
     qArea.style.userSelect = 'none';
   }
+}
+
+/* ══════════════════════════════════════════════════════
+   WEBCAM PROCTORING
+══════════════════════════════════════════════════════ */
+
+var _webcamStream    = null;
+var _webcamVideo     = null;
+var _webcamCanvas    = null;
+var _webcamInterval  = null;
+var _prevPixels      = null;
+var _absenceStreak   = 0;   // consecutive checks with no face-like motion
+var _ABSENCE_THRESH  = 6;   // checks (~18 s) before flagging absence
+var _MOTION_THRESH   = 30;  // avg pixel diff to count as meaningful motion
+
+function startWebcamProctoring() {
+  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) return; // not supported
+
+  navigator.mediaDevices.getUserMedia({ video: { width:160, height:120, facingMode:'user' }, audio:false })
+    .then(function(stream) {
+      _webcamStream = stream;
+      buildWebcamUI(stream);
+      scheduleWebcamChecks();
+    })
+    .catch(function(err) {
+      // Denied or unavailable — show a one-time notice but do NOT count as violation
+      showCameraNotice(err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError');
+    });
+}
+
+function stopWebcamProctoring() {
+  clearInterval(_webcamInterval);
+  _webcamInterval = null;
+  _prevPixels = null;
+  _absenceStreak = 0;
+  if (_webcamStream) {
+    _webcamStream.getTracks().forEach(function(t) { t.stop(); });
+    _webcamStream = null;
+  }
+  // Remove UI
+  var pip = document.getElementById('proctor-pip');
+  if (pip) pip.remove();
+  var notice = document.getElementById('proctor-notice');
+  if (notice) notice.remove();
+}
+
+function buildWebcamUI(stream) {
+  // Small picture-in-picture feed fixed to top-right during quiz
+  var pip = document.createElement('div');
+  pip.id = 'proctor-pip';
+  pip.style.cssText =
+    'position:fixed;top:58px;right:10px;z-index:9000;' +
+    'width:64px;height:48px;border-radius:8px;overflow:hidden;' +
+    'border:2px solid var(--green);box-shadow:0 2px 12px rgba(0,0,0,.4);' +
+    'background:#000;opacity:.85;';
+
+  var vid = document.createElement('video');
+  vid.id = 'proctor-video';
+  vid.autoplay = true;
+  vid.muted = true;
+  vid.playsInline = true;
+  vid.style.cssText = 'width:100%;height:100%;object-fit:cover;transform:scaleX(-1);';
+  vid.srcObject = stream;
+  pip.appendChild(vid);
+
+  // Green dot indicator
+  var dot = document.createElement('div');
+  dot.id = 'proctor-dot';
+  dot.title = 'Camera active — proctoring on';
+  dot.style.cssText =
+    'position:absolute;bottom:3px;right:3px;width:8px;height:8px;' +
+    'border-radius:50%;background:var(--green);' +
+    'box-shadow:0 0 6px var(--green);animation:pulse 2s infinite;';
+  pip.appendChild(dot);
+
+  document.body.appendChild(pip);
+  _webcamVideo = vid;
+
+  // Off-screen canvas for motion analysis
+  var cv = document.createElement('canvas');
+  cv.width = 80; cv.height = 60;
+  _webcamCanvas = cv;
+}
+
+function scheduleWebcamChecks() {
+  // Check every 3 seconds
+  _webcamInterval = setInterval(function() {
+    if (!$('s-quiz') || !$('s-quiz').classList.contains('on')) return;
+    analyseFrame();
+  }, 3000);
+}
+
+function analyseFrame() {
+  if (!_webcamVideo || !_webcamCanvas || _webcamVideo.readyState < 2) return;
+  var ctx = _webcamCanvas.getContext('2d');
+  ctx.drawImage(_webcamVideo, 0, 0, 80, 60);
+  var data = ctx.getImageData(0, 0, 80, 60).data;
+
+  // Compute brightness per pixel (greyscale) for simple presence detection
+  var pixels = new Uint8Array(80 * 60);
+  var total = 0;
+  for (var i = 0; i < pixels.length; i++) {
+    var idx = i * 4;
+    pixels[i] = Math.round(0.299*data[idx] + 0.587*data[idx+1] + 0.114*data[idx+2]);
+    total += pixels[i];
+  }
+  var avgBright = total / pixels.length;
+
+  // Motion diff vs previous frame
+  var motionScore = 0;
+  if (_prevPixels) {
+    var diff = 0;
+    for (var j = 0; j < pixels.length; j++) diff += Math.abs(pixels[j] - _prevPixels[j]);
+    motionScore = diff / pixels.length;
+  }
+  _prevPixels = pixels;
+
+  // Heuristic: if average brightness is very low OR very uniform and no motion → possible absence
+  var isBlank   = avgBright < 8;                    // camera covered / very dark
+  var noMotion  = _prevPixels && motionScore < _MOTION_THRESH;
+
+  if (isBlank) {
+    _absenceStreak++;
+    updatePipBorder('var(--red)');
+    if (_absenceStreak >= 2) {
+      _absenceStreak = 0;
+      recordCheatViolation('Camera appears covered or blocked.');
+    }
+  } else if (noMotion && avgBright > 8) {
+    _absenceStreak++;
+    if (_absenceStreak >= _ABSENCE_THRESH) {
+      _absenceStreak = 0;
+      recordCheatViolation('No movement detected — are you still there?');
+    }
+    updatePipBorder('var(--yellow)');
+  } else {
+    _absenceStreak = Math.max(0, _absenceStreak - 1);
+    updatePipBorder('var(--green)');
+  }
+}
+
+function updatePipBorder(color) {
+  var pip = document.getElementById('proctor-pip');
+  if (pip) pip.style.borderColor = color;
+  var dot = document.getElementById('proctor-dot');
+  if (dot) dot.style.background = color;
+}
+
+function showCameraNotice(wasDenied) {
+  var notice = document.createElement('div');
+  notice.id = 'proctor-notice';
+  notice.style.cssText =
+    'position:fixed;top:58px;right:10px;z-index:9000;' +
+    'max-width:180px;background:rgba(13,27,110,.92);color:#fff;' +
+    'border-radius:8px;padding:8px 10px;font-size:.65rem;line-height:1.4;' +
+    'border:1.5px solid rgba(255,255,255,.2);box-shadow:var(--shadow-md);';
+  notice.innerHTML = wasDenied
+    ? '📷 Camera access denied.<br>Proctoring disabled.<br><span style="opacity:.65">Allow camera in browser settings for full proctoring.</span>'
+    : '📷 Camera unavailable.<br>Proctoring disabled.';
+  var close = document.createElement('button');
+  close.textContent = '✕';
+  close.style.cssText = 'position:absolute;top:4px;right:6px;background:none;border:none;color:#fff;cursor:pointer;font-size:.75rem;';
+  close.onclick = function() { notice.remove(); };
+  notice.appendChild(close);
+  document.body.appendChild(notice);
+  setTimeout(function() { if (notice.parentNode) notice.remove(); }, 8000);
 }
 
 /* ══ AI THEORY MARKING ══ */
@@ -2398,7 +2582,7 @@ async function saveManualQs() {
   toast('Loading shared quiz…');
   const r = await api({ action: 'getQuizById', quizId });
   if (r.success && r.data) {
-    startQuiz(r.data.QuizID, r.data.QuizTitle, String(r.data.IsPublic).toLowerCase()==='true', r.data.TimeLimit, r.data.PassMark);
+    startQuiz(r.data.QuizID, r.data.QuizTitle, String(r.data.IsPublic).toLowerCase()==='true', r.data.TimeLimit, r.data.PassMark, r.data.SubjectName || '', r.data.TopicName || '');
   } else {
     toast('Quiz not found');
   }
