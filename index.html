@@ -1087,7 +1087,8 @@ function renderQ() {
   $('q-num').textContent     = `Question ${S.qi + 1}`;
   $('q-text').innerHTML      = esc(q.Question);
   renderMath($('q-text'));
-  $('q-img').innerHTML = q.ImageURL ? `<img src="${esc(q.ImageURL)}" loading="lazy" style="max-width:100%;border-radius:8px;border:1.5px solid var(--border);margin-bottom:16px;display:block;">` : '';
+  const qImgUrl = q.ImageURL || q.imageUrl || '';
+  $('q-img').innerHTML = qImgUrl ? '<img src="' + esc(qImgUrl) + '" loading="lazy" style="max-width:100%;border-radius:8px;border:1.5px solid var(--border);margin-bottom:16px;display:block;">' : '';
   $('q-prog').style.width    = `${(S.qi + 1) / n * 100}%`;
   const LETTERS = 'ABCDEFGHIJ';
   const isTheory = q.QuestionType === 'theory' || q.CorrectAnswer === 'THEORY';
@@ -1242,7 +1243,7 @@ async function showResults() {
     return `
       <div class="rev-card">
         <div class="rev-q">${i+1}. ${esc(q.Question)}</div>
-        ${q.ImageURL ? `<img src="${esc(q.ImageURL)}" loading="lazy" style="max-width:100%;border-radius:7px;border:1px solid var(--border);margin-bottom:8px;display:block;">` : ''}
+        ${(q.ImageURL||q.imageUrl) ? '<img src="' + esc(q.ImageURL||q.imageUrl) + '" loading="lazy" style="max-width:100%;border-radius:7px;border:1px solid var(--border);margin-bottom:8px;display:block;">' : ''}
         ${bodyHtml}
         ${q.Explanation ? `<div class="rev-exp">${esc(q.Explanation)}</div>` : ''}
       </div>`;
@@ -1734,7 +1735,7 @@ async function loadQuizzes() {
           <div class="li-name">${esc(q.QuizTitle)}</div>
           <div class="li-meta">${pub ? '<span style="color:var(--green)">&#9679;</span> Public' : '<span style="color:var(--text-muted)">&#9675;</span> Private'}${q.AccessCode ? ' &middot; Code: ' + q.AccessCode : ''}${(!pub && q.TimeLimit > 0) ? ' &middot; ' + q.TimeLimit + ' min' : ''}</div>
         </div>
-        <dii-actions">
+        <div class="li-actions">
           <button class="btn ghost sm" onclick="openEditQuestions('${q.QuizID}','${esc(q.QuizTitle).replace(/\'/g,"\\'")}',event)">Questions</button>
           <button class="btn ghost sm" onclick="viewResults('${q.QuizID}','${esc(q.QuizTitle).replace(/\'/g,"\\'")}',event)">Results</button>
           <button class="btn ghost sm" onclick="shareQuiz('${q.QuizID}','${esc(q.QuizTitle).replace(/\'/g,"\\'")}',event)">Share</button>
@@ -1804,18 +1805,16 @@ function openCreateQuiz() {
   $('cq-code').value  = '';
   $('cq-time').value  = '';
   $('cq-pass').value  = '';
-  $('cq-time-row').style.display = 'none';
+  $('cq-time-row').style.display  = 'none';
+  $('cq-code-row').style.display  = 'none';
   $('ai-text').value  = '';
   $('ai-status').textContent = '';
-  $('ai-preview').style.display = 'none';
-  $('ai-preview-list').innerHTML = '';
   $('manual-list').innerHTML = '';
-  $('manual-save').style.display = 'none';
-  $('cq-code-row').style.display = 'none';
   $('cq-step1').style.display  = 'block';
   $('cq-step2').style.display  = 'none';
   document.querySelector('[name="cq-vis"][value="true"]').checked = true;
   S.aiQs = []; S.pendQId = null; S.manN = 0; S.manImages = {};
+  S.pendingQs = []; S.editQMode = 'new';
   show('create-quiz');
 }
 
@@ -1860,7 +1859,7 @@ Rules:
 - Always provide an explanation even if you must generate it.
 
 Text:
-\${raw}`;
+${raw}`;
   try {
     const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
       method: 'POST',
