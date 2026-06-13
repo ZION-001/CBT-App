@@ -392,13 +392,16 @@ textarea.inp{min-height:160px;resize:vertical;}
   position:fixed;bottom:24px;left:50%;transform:translateX(-50%);
   background:var(--blue-deep);color:#fff;
   padding:10px 22px;
-  border-radius:50px;
+  border-radius:16px;
   font-size:.78rem;font-weight:600;letter-spacing:.5px;
   opacity:0;transition:opacity .25s;
   pointer-events:none;z-index:100;
-  white-space:nowrap;max-width:90vw;overflow:hidden;text-overflow:ellipsis;
+  white-space:normal;word-break:break-word;
+  max-width:92vw;width:max-content;
   box-shadow:var(--shadow-lg);
   border-left:3px solid var(--green);
+  line-height:1.4;
+  text-align:left;
 }
 #toast.on{opacity:1;}
 .q-grid-btn{
@@ -544,7 +547,7 @@ input, textarea, select, .inp, .sel {
 <body>
 
 
-<div id="toast"></div>
+<div id="toast" onclick="this.classList.remove('on')" style="pointer-events:auto;cursor:pointer;"></div>
 
 <!-- ════════════ CUSTOM MODAL ════════════ -->
 <div id="cbt-modal" style="
@@ -844,11 +847,12 @@ input, textarea, select, .inp, .sel {
   </div>
   <div class="admin-bar">Manage Quizzes</div>
   <div class="page">
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
-      <div class="pg-title" style="margin:0;border:0;padding:0;">Subjects</div>
-      <div style="display:flex;gap:8px;">
-        <button class="btn ghost sm" onclick="openPinSettings()">Security</button>
-        <button class="btn sm" onclick="toggleIF('if-subj')">+ Subject</button>
+    <div style="margin-bottom:12px;">
+      <div class="pg-title" style="margin:0 0 10px;border:0;padding:0;">Subjects</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;">
+        <button class="btn ghost sm" style="flex:1;" onclick="openPinSettings()">Security</button>
+        <button class="btn ghost sm" style="flex:1;" onclick="copyStudentLink()">📋 Student Link</button>
+        <button class="btn sm" style="flex:1;" onclick="toggleIF('if-subj')">+ Subject</button>
       </div>
     </div>
     <div id="if-subj" class="inline-form">
@@ -1208,7 +1212,8 @@ const S = {
   multiFaceStreak: 0,
   // School auth session
   schoolEmail: null,
-  sessionToken: null
+  sessionToken: null,
+  schoolId: null        // SchoolID from the Schools sheet, used for public quiz scoping
 };
 /* ══ Utils ══ */
 const $ = id => document.getElementById(id);
@@ -1240,7 +1245,9 @@ function toast(msg) {
   el.textContent = msg;
   el.classList.add('on');
   clearTimeout(_tt);
-  _tt = setTimeout(() => el.classList.remove('on'), 2600);
+  // Longer messages stay on screen longer so they can be read fully
+  const duration = Math.min(8000, Math.max(2600, msg.length * 60));
+  _tt = setTimeout(() => el.classList.remove('on'), duration);
 }
 
 function esc(s) {
@@ -1375,7 +1382,6 @@ function openAdminGate() {
   $('ag-step-pin').style.display = 'none';
   $('ag-step-otp').style.display = 'none';
   $('admin-gate').style.display = 'flex';
-  setTimeout(() => $('ag-email').focus(), 50);
 }
 function closeAdminGate() {
   $('admin-gate').style.display = 'none';
@@ -1384,12 +1390,10 @@ function closeAdminGate() {
 function agSwitchToRegister() {
   $('ag-step-email').style.display = 'none';
   $('ag-step-register').style.display = '';
-  setTimeout(() => $('ag-reg-name').focus(), 50);
 }
 function agSwitchToLogin() {
   $('ag-step-register').style.display = 'none';
   $('ag-step-email').style.display = '';
-  setTimeout(() => $('ag-email').focus(), 50);
 }
 
 async function submitAgRegister() {
@@ -1403,7 +1407,6 @@ async function submitAgRegister() {
   $('ag-step-register').style.display = 'none';
   $('ag-step-otp').style.display = '';
   toast(`Account created! ${r.data.trialDays}-day trial started. Code sent to your email.`);
-  setTimeout(() => $('ag-otp').focus(), 50);
 }
 
 async function submitAgEmail() {
@@ -1415,12 +1418,10 @@ async function submitAgEmail() {
   if (r.data.method === 'pin') {
     $('ag-step-email').style.display = 'none';
     $('ag-step-pin').style.display = '';
-    setTimeout(() => $('ag-pin').focus(), 50);
   } else {
     $('ag-step-email').style.display = 'none';
     $('ag-step-otp').style.display = '';
     toast('Verification code sent to your email');
-    setTimeout(() => $('ag-otp').focus(), 50);
   }
 }
 
@@ -1450,12 +1451,12 @@ function agSwitchToOtp() {
   $('ag-step-pin').style.display = 'none';
   $('ag-step-otp').style.display = '';
   resendAgOtp();
-  setTimeout(() => $('ag-otp').focus(), 50);
 }
 
 function enterAdminDashboard(data) {
   S.schoolEmail = data.email;
   S.sessionToken = data.token;
+  S.schoolId = data.schoolId || null;
   S.userName = data.schoolName || 'Admin';
   closeAdminGate();
   show('admin');
@@ -1465,8 +1466,20 @@ function enterAdminDashboard(data) {
 function sessionExpired() {
   S.schoolEmail = null;
   S.sessionToken = null;
+  S.schoolId = null;
   show('home');
   toast('Session expired. Please log in again.');
+}
+
+function copyStudentLink() {
+  if (!S.schoolId) { toast('No school ID found. Please log in again.'); return; }
+  const url = location.origin + location.pathname + '?school=' + encodeURIComponent(S.schoolId);
+  if (navigator.clipboard) {
+    navigator.clipboard.writeText(url).then(() => toast('Student link copied! Share it with your students.'))
+      .catch(() => toast(url));
+  } else {
+    toast(url);
+  }
 }
 
 /* ══ SECURITY / PIN SETTINGS ══ */
@@ -1500,9 +1513,18 @@ async function submitCode() {
 
 /* ══ QUIZ LIST ══ */
 async function loadPublicQuizzes() {
+  // Determine which school's quizzes to show.
+  // Priority: logged-in admin > URL ?school= param
+  const urlSchoolId = new URLSearchParams(location.search).get('school');
+  const schoolId = S.schoolId || urlSchoolId || '';
+  if (!schoolId) {
+    show('quiz-list');
+    $('quiz-list-body').innerHTML = '<div class="empty">No school selected. Use your school\'s link to browse quizzes.</div>';
+    return;
+  }
   show('quiz-list');
   $('quiz-list-body').innerHTML = '<div class="loading">Loading quizzes…</div>';
-  const r = await api({ action: 'getPublicQuizzes' });
+  const r = await api({ action: 'getPublicQuizzes', schoolId });
   if (!r.success || !r.data?.length) {
     $('quiz-list-body').innerHTML = '<div class="empty">No quizzes available yet.</div>';
     return;
