@@ -1446,7 +1446,7 @@ function eqRemoveImage() {
   renderEqImage('');
 }
 
-function saveEditQ() {
+async function saveEditQ() {
   const idx = S.editQIdx;
   const q = S.pendingQs[idx];
   const typeEl = document.querySelector('[name="eq-type"]:checked');
@@ -1466,15 +1466,15 @@ function saveEditQ() {
     if (opts.length < 2) { toast('Need at least 2 options'); return; }
     q.options = opts;
     q.correctAnswer = $('eq-correct').value;
-    // Also set legacy fields for compatibility
     EQ_LETTERS.split('').forEach((l, i) => { q['option'+l] = opts[i] || ''; });
   }
 
   S.pendingQs[idx] = q;
 
-  // If it's an already-saved question (editing existing), update on server too
   if (S.editQMode === 'existing' && q.QuestionID) {
-    updateQuestionOnServer(q);
+    toast('Saving…');
+    const r = await updateQuestionOnServer(q);
+    if (r && !r.success) { toast('Save failed: ' + (r.error||'')); return; }
   }
 
   show('q-preview');
@@ -1500,7 +1500,7 @@ function closeEditQ() {
 }
 
 async function updateQuestionOnServer(q) {
-  await api({ action: 'updateQuestion', question: JSON.stringify(q) });
+  return await api({ action: 'updateQuestion', question: JSON.stringify(q) });
 }
 
 /* ── Save ALL pending questions ── */
