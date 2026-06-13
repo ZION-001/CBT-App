@@ -6,6 +6,7 @@
 <title>CBT App</title>
 <!-- face-api.js for AI face detection proctoring -->
 <script src="https://cdn.jsdelivr.net/npm/@vladmandic/face-api/dist/face-api.js"></script>
+<script src="https://js.paystack.co/v1/inline.js"></script>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Sora:wght@600;700;800&display=swap');
 
@@ -647,6 +648,13 @@ input, textarea, select, .inp, .sel {
 <div id="s-home" class="screen on">
   <div style="flex:1;display:flex;align-items:center;justify-content:center;background:var(--grad-hero);padding:24px;">
     <div style="width:100%;max-width:360px;">
+      <!-- School banner (shown when opened via school link) -->
+      <div id="home-school-banner" style="display:none;text-align:center;margin-bottom:18px;">
+        <div style="display:inline-block;background:rgba(255,255,255,.12);backdrop-filter:blur(8px);border:1px solid rgba(255,255,255,.25);border-radius:50px;padding:7px 20px;">
+          <div style="font-size:.55rem;font-weight:700;letter-spacing:2.5px;text-transform:uppercase;color:rgba(255,255,255,.55);margin-bottom:2px;">Powered by</div>
+          <div id="home-school-name" style="font-family:'Sora',sans-serif;font-size:.95rem;font-weight:700;color:#fff;letter-spacing:.5px;"></div>
+        </div>
+      </div>
       <!-- Hero card -->
       <div style="background:rgba(255,255,255,.07);backdrop-filter:blur(10px);border:1px solid rgba(255,255,255,.18);border-radius:18px;padding:44px 28px 36px;text-align:center;box-shadow:0 20px 60px rgba(0,0,0,.35);">
         <!-- Accent bar -->
@@ -847,6 +855,19 @@ input, textarea, select, .inp, .sel {
   </div>
   <div class="admin-bar">Manage Quizzes</div>
   <div class="page">
+    <!-- School profile card -->
+    <div id="admin-profile-card" style="background:var(--grad-main);border-radius:var(--radius);padding:16px 18px;margin-bottom:18px;color:#fff;box-shadow:var(--shadow-md);position:relative;overflow:hidden;">
+      <div style="position:absolute;top:-20px;right:-20px;width:100px;height:100px;border-radius:50%;background:rgba(255,255,255,.06);pointer-events:none;"></div>
+      <div style="font-size:.58rem;font-weight:700;letter-spacing:2.5px;text-transform:uppercase;color:rgba(255,255,255,.55);margin-bottom:4px;">Organisation</div>
+      <div id="profile-school-name" style="font-family:'Sora',sans-serif;font-size:1.1rem;font-weight:700;margin-bottom:12px;color:#fff;">—</div>
+      <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+        <div id="profile-plan-badge" style="font-size:.6rem;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;padding:4px 12px;border-radius:50px;background:var(--green);color:#fff;">Active</div>
+        <div id="profile-days" style="font-size:.72rem;color:rgba(255,255,255,.75);font-weight:500;">— days left</div>
+        <button onclick="openSubscription()" style="margin-left:auto;background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.3);color:#fff;font-size:.65rem;font-weight:700;letter-spacing:1px;text-transform:uppercase;padding:5px 12px;border-radius:50px;cursor:pointer;">⚡ Subscribe</button>
+      </div>
+      <div id="profile-email" style="font-size:.62rem;color:rgba(255,255,255,.4);margin-top:6px;">—</div>
+    </div>
+
     <div style="margin-bottom:12px;">
       <div class="pg-title" style="margin:0 0 10px;border:0;padding:0;">Subjects</div>
       <div style="display:flex;gap:8px;flex-wrap:wrap;">
@@ -863,6 +884,92 @@ input, textarea, select, .inp, .sel {
       </div>
     </div>
     <div id="admin-subjects"></div>
+  </div>
+</div>
+
+<!-- ════════════ SUBSCRIPTION ════════════ -->
+<div id="s-subscription" class="screen">
+  <div class="topbar">
+    <button class="back-btn" onclick="show('admin')">◀ Back</button>
+    <span class="topbar-title">Subscription</span>
+    <span></span>
+  </div>
+  <div class="page">
+    <div class="pg-title">Choose a Plan</div>
+
+    <!-- Current plan summary -->
+    <div id="sub-current" style="background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius);padding:14px 16px;margin-bottom:20px;font-size:.82rem;color:var(--text-secondary);"></div>
+
+    <!-- Plans -->
+    <div id="sub-plans" style="display:flex;flex-direction:column;gap:14px;margin-bottom:24px;">
+
+      <!-- Starter -->
+      <div class="sub-plan-card" id="plan-starter" onclick="selectPlan('starter')" style="border:2px solid var(--border);border-radius:var(--radius);padding:18px;background:var(--card);cursor:pointer;transition:border-color .2s,box-shadow .2s;">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px;">
+          <div>
+            <div style="font-family:'Sora',sans-serif;font-size:.95rem;font-weight:700;color:var(--text-primary);">Starter</div>
+            <div style="font-size:.68rem;color:var(--text-muted);letter-spacing:1px;text-transform:uppercase;margin-top:2px;">Up to 50 students</div>
+          </div>
+          <div style="text-align:right;">
+            <div style="font-family:'Sora',sans-serif;font-size:1.3rem;font-weight:800;color:var(--blue-mid);">₦3,500</div>
+            <div style="font-size:.62rem;color:var(--text-muted);">/month</div>
+          </div>
+        </div>
+        <div style="font-size:.75rem;color:var(--text-secondary);line-height:1.8;">
+          ✓ Unlimited quizzes &amp; subjects<br>
+          ✓ AI question parser<br>
+          ✓ Results &amp; leaderboard<br>
+          ✓ Student link
+        </div>
+      </div>
+
+      <!-- School -->
+      <div class="sub-plan-card" id="plan-school" onclick="selectPlan('school')" style="border:2px solid var(--blue-bright);border-radius:var(--radius);padding:18px;background:var(--card);cursor:pointer;transition:border-color .2s,box-shadow .2s;position:relative;box-shadow:var(--shadow-md);">
+        <div style="position:absolute;top:-1px;right:16px;background:var(--blue-bright);color:#fff;font-size:.58rem;font-weight:700;letter-spacing:2px;text-transform:uppercase;padding:3px 10px;border-radius:0 0 6px 6px;">Popular</div>
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px;">
+          <div>
+            <div style="font-family:'Sora',sans-serif;font-size:.95rem;font-weight:700;color:var(--text-primary);">School</div>
+            <div style="font-size:.68rem;color:var(--text-muted);letter-spacing:1px;text-transform:uppercase;margin-top:2px;">Up to 200 students</div>
+          </div>
+          <div style="text-align:right;">
+            <div style="font-family:'Sora',sans-serif;font-size:1.3rem;font-weight:800;color:var(--blue-mid);">₦8,000</div>
+            <div style="font-size:.62rem;color:var(--text-muted);">/month</div>
+          </div>
+        </div>
+        <div style="font-size:.75rem;color:var(--text-secondary);line-height:1.8;">
+          ✓ Everything in Starter<br>
+          ✓ PIN login<br>
+          ✓ Private quiz access codes<br>
+          ✓ Priority support
+        </div>
+      </div>
+
+      <!-- Academy -->
+      <div class="sub-plan-card" id="plan-academy" onclick="selectPlan('academy')" style="border:2px solid var(--border);border-radius:var(--radius);padding:18px;background:var(--card);cursor:pointer;transition:border-color .2s,box-shadow .2s;">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px;">
+          <div>
+            <div style="font-family:'Sora',sans-serif;font-size:.95rem;font-weight:700;color:var(--text-primary);">Academy</div>
+            <div style="font-size:.68rem;color:var(--text-muted);letter-spacing:1px;text-transform:uppercase;margin-top:2px;">Up to 500 students</div>
+          </div>
+          <div style="text-align:right;">
+            <div style="font-family:'Sora',sans-serif;font-size:1.3rem;font-weight:800;color:var(--blue-mid);">₦18,000</div>
+            <div style="font-size:.62rem;color:var(--text-muted);">/month</div>
+          </div>
+        </div>
+        <div style="font-size:.75rem;color:var(--text-secondary);line-height:1.8;">
+          ✓ Everything in School<br>
+          ✓ Anti-cheat + webcam proctoring<br>
+          ✓ Theory questions + AI marking<br>
+          ✓ Dedicated support
+        </div>
+      </div>
+    </div>
+
+    <button id="sub-pay-btn" class="btn full" onclick="initiatePayment()" disabled style="margin-bottom:10px;">Select a plan to continue</button>
+    <div style="font-size:.68rem;color:var(--text-muted);text-align:center;line-height:1.6;">
+      Secured by Paystack · Cards, Bank Transfer, USSD accepted<br>
+      Your plan renews for 1 month from today
+    </div>
   </div>
 </div>
 
@@ -1213,7 +1320,8 @@ const S = {
   // School auth session
   schoolEmail: null,
   sessionToken: null,
-  schoolId: null        // SchoolID from the Schools sheet, used for public quiz scoping
+  schoolId: null,        // SchoolID from the Schools sheet, used for public quiz scoping
+  planTier: 'trial'
 };
 /* ══ Utils ══ */
 const $ = id => document.getElementById(id);
@@ -1461,6 +1569,109 @@ function enterAdminDashboard(data) {
   closeAdminGate();
   show('admin');
   loadSubjects();
+  loadAdminProfile();
+}
+
+async function loadAdminProfile() {
+  const r = await api({ action: 'getAdminProfile', email: S.schoolEmail, token: S.sessionToken });
+  if (!r.success) return;
+  const d = r.data;
+  S.schoolId = d.schoolId || S.schoolId;
+  S.planTier = d.planTier || 'trial';
+  const el = id => document.getElementById(id);
+  el('profile-school-name').textContent = d.schoolName || '—';
+  el('profile-email').textContent = d.email || '';
+  const active = String(d.planStatus).toLowerCase() === 'active';
+  const isTrial = d.planTier === 'trial';
+  el('profile-plan-badge').textContent = !active ? 'Expired' : isTrial ? 'Trial' : (d.planTier.charAt(0).toUpperCase() + d.planTier.slice(1));
+  el('profile-plan-badge').style.background = !active ? 'var(--red)' : isTrial ? 'var(--yellow)' : 'var(--green)';
+  el('profile-plan-badge').style.color = (isTrial && active) ? 'var(--text-primary)' : '#fff';
+  if (active) {
+    el('profile-days').textContent = d.daysLeft + (d.daysLeft === 1 ? ' day left' : ' days left') + (isTrial ? ' on trial' : '');
+    if (d.daysLeft <= 3) el('profile-days').style.color = 'rgba(255,180,0,.9)';
+  } else {
+    el('profile-days').textContent = 'Subscription expired';
+    el('profile-days').style.color = 'rgba(255,100,100,.9)';
+  }
+  // Show expiry warning banner if ≤ 5 days left
+  if (active && d.daysLeft <= 5) {
+    toast(`⚠️ Your ${isTrial ? 'trial' : 'plan'} expires in ${d.daysLeft} day${d.daysLeft===1?'':'s'}. Tap Subscribe to continue.`);
+  }
+}
+
+/* ══ SUBSCRIPTION ══ */
+const PAYSTACK_PUBLIC = 'pk_live_f17698d6723d2f69454aaaaf984750ffd786fc81';
+const PLAN_PRICES = { starter: 350000, school: 800000, academy: 1800000 };
+const PLAN_NAMES  = { starter: 'Starter — ₦3,500/mo', school: 'School — ₦8,000/mo', academy: 'Academy — ₦18,000/mo' };
+
+let S_selectedPlan = null;
+
+function openSubscription() {
+  S_selectedPlan = null;
+  // Reset card borders
+  ['starter','school','academy'].forEach(p => {
+    const card = document.getElementById('plan-' + p);
+    card.style.borderColor = p === 'school' ? 'var(--blue-bright)' : 'var(--border)';
+    card.style.boxShadow = p === 'school' ? 'var(--shadow-md)' : 'none';
+  });
+  const btn = $('sub-pay-btn');
+  btn.disabled = true;
+  btn.textContent = 'Select a plan to continue';
+
+  // Show current plan info
+  const cur = $('sub-current');
+  cur.innerHTML = `Current plan: <strong>${(S.planTier||'trial').charAt(0).toUpperCase()+(S.planTier||'trial').slice(1)}</strong> &nbsp;·&nbsp; Subscribing adds 1 month from today.`;
+
+  show('subscription');
+}
+
+function selectPlan(plan) {
+  S_selectedPlan = plan;
+  ['starter','school','academy'].forEach(p => {
+    const card = document.getElementById('plan-' + p);
+    const active = p === plan;
+    card.style.borderColor = active ? 'var(--green)' : (p === 'school' ? 'var(--blue-bright)' : 'var(--border)');
+    card.style.boxShadow = active ? '0 0 0 3px rgba(28,201,126,.2)' : (p === 'school' ? 'var(--shadow-md)' : 'none');
+  });
+  const btn = $('sub-pay-btn');
+  btn.disabled = false;
+  btn.textContent = 'Pay ' + PLAN_NAMES[plan];
+}
+
+function initiatePayment() {
+  if (!S_selectedPlan) return;
+  if (!S.schoolEmail) { toast('Session expired. Please log in again.'); return; }
+
+  const handler = PaystackPop.setup({
+    key: PAYSTACK_PUBLIC,
+    email: S.schoolEmail,
+    amount: PLAN_PRICES[S_selectedPlan],
+    currency: 'NGN',
+    ref: 'CBT-' + Date.now() + '-' + Math.random().toString(36).slice(2,7).toUpperCase(),
+    label: 'CBT App — ' + S_selectedPlan.charAt(0).toUpperCase() + S_selectedPlan.slice(1) + ' Plan',
+    onClose: function() {
+      toast('Payment cancelled.');
+    },
+    callback: async function(response) {
+      toast('Payment received! Verifying…');
+      const r = await api({
+        action: 'verifyAndActivatePlan',
+        email: S.schoolEmail,
+        token: S.sessionToken,
+        reference: response.reference,
+        plan: S_selectedPlan
+      });
+      if (r.success) {
+        toast(`✅ ${r.data.planName} plan activated! Expires ${new Date(r.data.planExpiry).toLocaleDateString()}`);
+        S.planTier = r.data.planTier;
+        show('admin');
+        loadAdminProfile();
+      } else {
+        toast('Verification failed: ' + (r.error || 'Contact support'));
+      }
+    }
+  });
+  handler.openIframe();
 }
 
 function sessionExpired() {
@@ -1505,13 +1716,28 @@ async function removePinSetting() {
 async function submitCode() {
   const code = $('home-code').value.trim().toUpperCase();
   if (!code) { toast('Enter a code first'); return; }
+  const urlSchoolId = new URLSearchParams(location.search).get('school');
+  const schoolId = S.schoolId || urlSchoolId || '';
   toast('Looking up…');
-  const r = await api({ action: 'getQuizByCode', code });
+  const r = await api({ action: 'getQuizByCode', code, schoolId });
   if (r.success && r.data) startQuiz(r.data.QuizID, r.data.QuizTitle, String(r.data.IsPublic).toLowerCase()==='true', r.data.TimeLimit, r.data.PassMark, r.data.SubjectName || '', r.data.TopicName || '');
   else toast('Code not found. Try again.');
 }
 
 /* ══ QUIZ LIST ══ */
+// On page load: if ?school= param exists, fetch school name and show banner
+(async function initSchoolContext() {
+  const urlSchoolId = new URLSearchParams(location.search).get('school');
+  if (!urlSchoolId) return;
+  const r = await api({ action: 'getSchoolInfo', schoolId: urlSchoolId });
+  if (r.success && r.data) {
+    const banner = $('home-school-banner');
+    const nameEl = $('home-school-name');
+    nameEl.textContent = r.data.SchoolName || '';
+    banner.style.display = 'block';
+  }
+})();
+
 async function loadPublicQuizzes() {
   // Determine which school's quizzes to show.
   // Priority: logged-in admin > URL ?school= param
