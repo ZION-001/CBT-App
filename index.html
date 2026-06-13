@@ -675,6 +675,11 @@ Ans: B"></textarea>
       <!-- Divider -->
       <div class="divider">or add manually</div>
       <button class="btn ghost full" onclick="addManualToPreview()">+ Add Question Manually</button>
+      <!-- Show staged count and link back to preview -->
+      <div id="step2-staged-bar" style="display:none;margin-top:14px;padding:12px 14px;background:var(--blue-glass);border:1.5px solid var(--blue-bright);border-radius:var(--radius);display:flex;align-items:center;justify-content:space-between;">
+        <span style="font-size:.78rem;font-weight:700;color:var(--blue-mid);"><span id="step2-staged-count">0</span> questions staged</span>
+        <button class="btn sm" onclick="openPreviewScreen($(&apos;cq-ctx&apos;).textContent)">Review &amp; Save</button>
+      </div>
       <div id="manual-list" style="margin-top:12px;"></div>
     </div>
 
@@ -693,11 +698,25 @@ Ans: B"></textarea>
   <div class="ctx-bar" id="qprev-ctx"></div>
 
   <!-- Summary bar -->
-  <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 18px;background:var(--card);border-bottom:1px solid var(--border);">
+  <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 18px;background:var(--card);border-bottom:1px solid var(--border);gap:8px;flex-wrap:wrap;">
     <div style="font-size:.72rem;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--text-secondary);">
-      <span id="qprev-count">0</span> questions
+      <span id="qprev-count">0</span> questions staged
     </div>
-    <button class="btn sm" onclick="addQFromPreview()">+ Add More</button>
+    <div style="display:flex;gap:8px;">
+      <button class="btn ghost sm" onclick="addMoreWithAI()">+ AI Parse</button>
+      <button class="btn sm" onclick="addQFromPreview()">+ Manual</button>
+    </div>
+  </div>
+
+  <!-- Inline AI panel -->
+  <div id="qprev-ai-panel" style="display:none;padding:14px 18px;background:var(--blue-glass);border-bottom:1px solid var(--border);">
+    <div style="font-size:.68rem;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--blue-mid);margin-bottom:8px;">Paste more questions for AI to parse</div>
+    <textarea class="inp" id="qprev-ai-text" style="min-height:120px;margin-bottom:10px;" placeholder="Paste questions here in any format..."></textarea>
+    <div style="display:flex;align-items:center;gap:10px;">
+      <button class="btn sm" onclick="previewAiParse()">Parse &amp; Add</button>
+      <button class="btn ghost sm" onclick="$('qprev-ai-panel').style.display='none'">Cancel</button>
+      <span id="qprev-ai-status" style="font-size:.72rem;color:var(--text-muted);"></span>
+    </div>
   </div>
 
   <div class="page" id="qprev-list"></div>
@@ -1272,9 +1291,18 @@ function reloadAndStart() {
 
 /* ── Go to preview screen with current pending questions ── */
 function openPreviewScreen(ctx) {
-  $('qprev-ctx').textContent = ctx || S.quiz && S.quiz.title || '';
+  $('qprev-ctx').textContent = ctx || (S.quiz && S.quiz.title) || '';
   renderPreviewList();
+  updateStagedBar();
   show('q-preview');
+}
+
+function updateStagedBar() {
+  const n = S.pendingQs.length;
+  const bar = $('step2-staged-bar');
+  const cnt = $('step2-staged-count');
+  if (bar) bar.style.display = n > 0 ? 'flex' : 'none';
+  if (cnt) cnt.textContent = n;
 }
 
 function renderPreviewList() {
@@ -1321,10 +1349,53 @@ function renderPreviewList() {
 
 /* ── Add more questions from preview page ── */
 function addQFromPreview() {
-  // Go back to create-quiz step2
-  show('create-quiz');
-  $('cq-step1').style.display = 'none';
-  $('cq-step2').style.display = 'block';
+  // Add a blank manual question directly into pendingQs and open editor
+  const newQ = { question:'', questionType:'mcq', options:['','','',''], correctAnswer:'A', explanation:'', modelAnswer:'', imageUrl:'' };
+  S.pendingQs.push(newQ);
+  S.editQIdx = S.pendingQs.length - 1;
+  openEditQ(S.editQIdx);
+}
+
+function addMoreWithAI() {
+  // Show the AI parse panel on the preview screen
+  const panel = $('qprev-ai-panel');
+  panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
+}
+
+async function previewAiParse() {
+  const raw = $('qprev-ai-text').value.trim();
+  if (!raw) { toast('Paste questions first'); return; }
+  const statusEl = $('qprev-ai-status');
+  statusEl.textContent = 'Parsing…';
+  const prompt = `You are a quiz parser. Parse the following text into quiz questions.
+Return ONLY a raw JSON array (no markdown, no code fences, just pure JSON starting with [ ).
+Each object must have: "question"(string), "type"("mcq" or "theory"), "options"(array, empty for theory),
+"correctAnswer"(letter A-J for mcq, model answer string for theory), "explanation"(always provide one).
+MCQ can have 2-10 options. Auto-detect theory questions.
+Text:
+${raw}`;
+  try {
+    const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+      method:'POST',
+      headers:{'Content-Type':'application/json','Authorization':'Bearer '+GROQ_KEY},
+      body:JSON.stringify({model:'llama-3.3-70b-versatile',messages:[{role:'user',content:prompt}],temperature:0.1,max_tokens:4096})
+    });
+    const d = await res.json();
+    if (d.error) { statusEl.textContent = 'Error: '+d.error.message; return; }
+    let txt = d.choices[0].message.content.trim().replace(/```json|```/g,'').trim();
+    const qs = JSON.parse(txt);
+    if (!Array.isArray(qs)||!qs.length) { statusEl.textContent = 'No questions found'; return; }
+    qs.forEach(q => S.pendingQs.push({
+      question:q.question, questionType:q.type||'mcq', options:q.options||[],
+      correctAnswer:q.correctAnswer||'A', explanation:q.explanation||'',
+      modelAnswer:q.type==='theory'?q.correctAnswer:'', imageUrl:''
+    }));
+    $('qprev-ai-text').value = '';
+    statusEl.textContent = qs.length + ' questions added!';
+    $('qprev-ai-panel').style.display = 'none';
+    renderPreviewList();
+    toast(qs.length + ' questions added to list');
+  } catch(e) { statusEl.textContent = 'Failed: '+e.message; }
 }
 
 /* ── Open single question editor ── */
@@ -1482,6 +1553,7 @@ async function saveEditQ() {
 
   show('q-preview');
   renderPreviewList();
+  updateStagedBar();
   toast('Question updated');
 }
 
@@ -1613,6 +1685,7 @@ function addManualToPreview() {
   const newQ = { question:'', questionType:'mcq', options:['','','',''], correctAnswer:'A', explanation:'', modelAnswer:'', imageUrl:'' };
   S.pendingQs.push(newQ);
   S.editQIdx = S.pendingQs.length - 1;
+  updateStagedBar();
   openEditQ(S.editQIdx);
 }
 
@@ -1653,6 +1726,7 @@ function qPreviewBack() {
   if (S.editQMode === 'existing') {
     show('admin-quizzes');
   } else {
+    // Go back to step2 — DON'T reset pendingQs, just show the add-more interface
     show('create-quiz');
     $('cq-step1').style.display = 'none';
     $('cq-step2').style.display = 'block';
@@ -1847,7 +1921,7 @@ async function cqNext() {
   const r = await api({ action:'createQuiz', topicId:S.topic.id, subjectId:S.subject.id, title, isPublic, accessCode: isPublic==='true'?'':code, timeLimit, passMark });
   if (!r.success) { toast('Error: ' + r.error); return; }
   S.pendQId = r.data.QuizID;
-  S.pendingQs = [];
+  S.pendingQs = []; // fresh list for new quiz
   S.editQMode = 'new';
   $('cq-bar').textContent = 'Quiz: ' + title;
   $('cq-ctx').textContent = `${S.topic.name} › ${title}`;
