@@ -862,7 +862,10 @@ const S = {
   userName: null,
   pendingQs: [],    // unified question staging area
   editQIdx: -1,
-  editQMode: 'new'  // 'new' | 'existing'
+  editQMode: 'new',  // 'new' | 'existing'
+  // Anti-cheat
+  cheatWarnings: 0,
+  cheatAutoSubmit: false
 };
 
 /* ══ Utils ══ */
@@ -871,7 +874,7 @@ const $ = id => document.getElementById(id);
 function show(id) {
   document.querySelectorAll('.screen').forEach(s => s.classList.remove('on'));
   $('s-' + id).classList.add('on');
-  if (id === 'home') S.userName = null;
+  if (id === 'home') { S.userName = null; destroyAntiCheat(); }
 }
 
 let _tt;
@@ -1032,6 +1035,11 @@ function startQuiz(quizId, title, isPublic, timeLimit, passMark) {
 async function beginQuiz() {
   const name = $('user-name-input').value.trim();
   if (!name) { toast('Enter your name'); return; }
+  // One attempt per session
+  const attemptedKey = 'attempted_' + S.quiz.id;
+  if (sessionStorage.getItem(attemptedKey)) {
+    if (!confirm('You have already attempted this quiz in this session. Start again?')) return;
+  }
   S.userName = name;
   if (S.quiz.isPublic) {
     S.quiz.timeLimit = parseInt($('ne-timer-select').value) || 0;
@@ -1054,6 +1062,8 @@ async function loadAndStartQuiz() {
   S.qi  = 0;
   renderQ();
   startTimer();
+  initAntiCheat();
+  disableSelection();
 }
 
 /* ══ SHUFFLE ══ */
@@ -1067,14 +1077,18 @@ function shuffle(arr) {
 }
 
 function shuffleQuestions(qs) {
-  return shuffle(qs).map(q => {
-    const letters = ['A','B','C','D'];
-    const opts = letters.map(l => ({ letter: l, text: q['Option'+l], isCorrect: l === q.CorrectAnswer }));
-    const shuffled = shuffle(opts);
-    const out = { ...q };
-    shuffled.forEach((o, i) => {
-      out['Option'+letters[i]] = o.text;
-      if (o.isCorrect) out.CorrectAnswer = letters[i];
+  return shuffle(qs).map(function(q) {
+    var isTheory = q.QuestionType === 'theory' || q.CorrectAnswer === 'THEORY';
+    if (isTheory) return q; // don't shuffle theory options
+    var allLetters = 'ABCDEFGHIJ'.split('');
+    var opts = allLetters
+      .map(function(l) { return { letter: l, text: q['Option'+l], isCorrect: l === q.CorrectAnswer }; })
+      .filter(function(o) { return o.text && String(o.text).trim(); });
+    var shuffled = shuffle(opts);
+    var out = Object.assign({}, q);
+    shuffled.forEach(function(o, i) {
+      out['Option'+allLetters[i]] = o.text;
+      if (o.isCorrect) out.CorrectAnswer = allLetters[i];
     });
     return out;
   });
@@ -1168,6 +1182,177 @@ function nextQ() {
 }
 
 
+
+/* ══════════════════════════════════════════════════════
+   ANTI-CHEAT SYSTEM
+══════════════════════════════════════════════════════ */
+
+function initAntiCheat() {
+  S.cheatWarnings = 0;
+  S.cheatAutoSubmit = false;
+
+  // ── Fullscreen ──
+  requestFullscreen();
+  document.addEventListener('fullscreenchange', onFullscreenChange);
+  document.addEventListener('webkitfullscreenchange', onFullscreenChange);
+
+  // ── Tab / visibility switch ──
+  document.addEventListener('visibilitychange', onVisibilityChange);
+  window.addEventListener('blur', onWindowBlur);
+
+  // ── Right-click & copy disabled on quiz screen ──
+  document.addEventListener('contextmenu', blockContextMenu);
+  document.addEventListener('copy', blockCopy);
+  document.addEventListener('cut', blockCopy);
+
+  // ── Keyboard shortcuts that could help cheating ──
+  document.addEventListener('keydown', blockCheatKeys);
+}
+
+function destroyAntiCheat() {
+  document.removeEventListener('fullscreenchange', onFullscreenChange);
+  document.removeEventListener('webkitfullscreenchange', onFullscreenChange);
+  document.removeEventListener('visibilitychange', onVisibilityChange);
+  window.removeEventListener('blur', onWindowBlur);
+  document.removeEventListener('contextmenu', blockContextMenu);
+  document.removeEventListener('copy', blockCopy);
+  document.removeEventListener('cut', blockCopy);
+  document.removeEventListener('keydown', blockCheatKeys);
+  exitFullscreen();
+}
+
+function requestFullscreen() {
+  var el = document.documentElement;
+  try {
+    if (el.requestFullscreen) el.requestFullscreen();
+    else if (el.webkitRequestFullscreen) el.webkitRequestFullscreen();
+  } catch(e) {}
+}
+
+function exitFullscreen() {
+  try {
+    if (document.exitFullscreen) document.exitFullscreen();
+    else if (document.webkitExitFullscreen) document.webkitExitFullscreen();
+  } catch(e) {}
+}
+
+function isInFullscreen() {
+  return !!(document.fullscreenElement || document.webkitFullscreenElement);
+}
+
+function onFullscreenChange() {
+  // Only penalise if quiz is active
+  if (!$('s-quiz').classList.contains('on')) return;
+  if (!isInFullscreen()) {
+    recordCheatViolation('You exited fullscreen! Return to fullscreen.');
+    // Re-request fullscreen
+    setTimeout(requestFullscreen, 800);
+  }
+}
+
+function onVisibilityChange() {
+  if (!$('s-quiz').classList.contains('on')) return;
+  if (document.hidden) {
+    recordCheatViolation('Tab switch detected! Stay on this tab.');
+  }
+}
+
+function onWindowBlur() {
+  if (!$('s-quiz').classList.contains('on')) return;
+  recordCheatViolation('Window lost focus! Do not switch apps.');
+}
+
+function blockContextMenu(e) {
+  if ($('s-quiz').classList.contains('on')) e.preventDefault();
+}
+
+function blockCopy(e) {
+  if ($('s-quiz').classList.contains('on')) {
+    e.preventDefault();
+    toast('Copying is not allowed during the quiz.');
+  }
+}
+
+function blockCheatKeys(e) {
+  if (!$('s-quiz').classList.contains('on')) return;
+  // Block Ctrl+C, Ctrl+A, Ctrl+F, PrintScreen, F12, Alt+Tab
+  var blocked =
+    (e.ctrlKey && ['c','a','f','p','u','s'].includes(e.key.toLowerCase())) ||
+    e.key === 'PrintScreen' ||
+    e.key === 'F12' ||
+    (e.altKey && e.key === 'Tab') ||
+    (e.ctrlKey && e.shiftKey && e.key === 'I');
+  if (blocked) {
+    e.preventDefault();
+    toast('Shortcut blocked during quiz.');
+  }
+}
+
+var _lastViolationTime = 0;
+function recordCheatViolation(msg) {
+  // Debounce — don't fire more than once every 2 seconds
+  var now = Date.now();
+  if (now - _lastViolationTime < 2000) return;
+  _lastViolationTime = now;
+
+  S.cheatWarnings++;
+  showCheatWarning(msg, S.cheatWarnings);
+
+  if (S.cheatWarnings >= 3) {
+    S.cheatAutoSubmit = true;
+    destroyAntiCheat();
+    toast('3 violations — quiz auto-submitted.');
+    setTimeout(function() { showResults(); }, 1500);
+  }
+}
+
+function showCheatWarning(msg, count) {
+  // Remove any existing warning overlay
+  var old = document.getElementById('cheat-overlay');
+  if (old) old.remove();
+
+  var overlay = document.createElement('div');
+  overlay.id = 'cheat-overlay';
+  overlay.style.cssText =
+    'position:fixed;inset:0;z-index:9999;background:rgba(232,41,74,.93);' +
+    'display:flex;flex-direction:column;align-items:center;justify-content:center;' +
+    'padding:32px 24px;text-align:center;';
+
+  var remaining = 3 - count;
+  overlay.innerHTML =
+    '<div style="font-family:Sora,sans-serif;font-size:2rem;font-weight:800;color:#fff;margin-bottom:12px;">' +
+      '⚠️ Warning ' + count + '/3' +
+    '</div>' +
+    '<div style="font-size:1rem;color:#fff;font-weight:600;margin-bottom:8px;">' + msg + '</div>' +
+    '<div style="font-size:.85rem;color:rgba(255,255,255,.8);margin-bottom:24px;">' +
+      (remaining > 0
+        ? remaining + ' more violation' + (remaining > 1 ? 's' : '') + ' will auto-submit your quiz.'
+        : 'Your quiz is being submitted now.') +
+    '</div>' +
+    (remaining > 0
+      ? '<button id="cheat-dismiss-btn" style="background:#fff;color:var(--red);border:none;border-radius:8px;padding:12px 32px;font-size:.85rem;font-weight:800;letter-spacing:1.5px;text-transform:uppercase;cursor:pointer;">I Understand — Continue</button>'
+      : '');
+
+  document.body.appendChild(overlay);
+
+  var btn = document.getElementById('cheat-dismiss-btn');
+  if (btn) {
+    btn.onclick = function() {
+      overlay.remove();
+      requestFullscreen();
+    };
+  }
+}
+
+/* Disable text selection on quiz question area */
+function disableSelection() {
+  var qArea = document.getElementById('q-area');
+  if (qArea) {
+    qArea.style.webkitUserSelect = 'none';
+    qArea.style.userSelect = 'none';
+  }
+}
+
 /* ══ AI THEORY MARKING ══ */
 async function markTheoryWithAI(i) {
   const q = S.Qs[i];
@@ -1207,6 +1392,7 @@ async function markTheoryWithAI(i) {
 /* ══ RESULTS ══ */
 async function showResults() {
   clearInterval(S.timerInt);
+  destroyAntiCheat();
   show('results');
   const n = S.Qs.length;
   let correct = 0, theoryPending = [];
@@ -1229,6 +1415,9 @@ async function showResults() {
     ${passFailHtml}
     <div style="margin-top:18px;"><button class="btn ghost sm" onclick="reloadAndStart()" style="border-color:rgba(255,255,255,.5);color:#fff;">Try Again</button></div>
   `;
+
+  // Mark as attempted for this session (one attempt enforcement)
+  sessionStorage.setItem('attempted_' + S.quiz.id, '1');
 
   // Save to spreadsheet
   api({
@@ -1874,16 +2063,18 @@ async function loadQuizzes() {
   el.innerHTML = r.data.map(q => {
     const pub = String(q.IsPublic).toLowerCase() === 'true';
     return `
-      <div class="li">
-        <div>
-          <div class="li-name">${esc(q.QuizTitle)}</div>
-          <div class="li-meta">${pub ? '<span style="color:var(--green)">&#9679;</span> Public' : '<span style="color:var(--text-muted)">&#9675;</span> Private'}${q.AccessCode ? ' &middot; Code: ' + q.AccessCode : ''}${(!pub && q.TimeLimit > 0) ? ' &middot; ' + q.TimeLimit + ' min' : ''}</div>
+      <div class="li" style="flex-direction:column;align-items:stretch;gap:10px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;">
+          <div style="flex:1;min-width:0;">
+            <div class="li-name" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${esc(q.QuizTitle)}</div>
+            <div class="li-meta">${pub ? '<span style="color:var(--green)">&#9679;</span> Public' : '<span style="color:var(--text-muted)">&#9675;</span> Private'}${q.AccessCode ? ' &middot; Code: ' + q.AccessCode : ''}${(!pub && q.TimeLimit > 0) ? ' &middot; ' + q.TimeLimit + ' min' : ''}</div>
+          </div>
+          <button class="btn danger sm" style="flex-shrink:0;padding:7px 12px;" onclick="delQuiz('${q.QuizID}',event)" title="Delete quiz">&#10005;</button>
         </div>
-        <div class="li-actions">
-          <button class="btn ghost sm" onclick="openEditQuestions('${q.QuizID}','${esc(q.QuizTitle).replace(/\'/g,"\\'")}',event)">Questions</button>
-          <button class="btn ghost sm" onclick="viewResults('${q.QuizID}','${esc(q.QuizTitle).replace(/\'/g,"\\'")}',event)">Results</button>
-          <button class="btn ghost sm" onclick="shareQuiz('${q.QuizID}','${esc(q.QuizTitle).replace(/\'/g,"\\'")}',event)">Share</button>
-          <button class="btn danger sm" onclick="delQuiz('${q.QuizID}',event)">Del</button>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+          <button class="btn ghost sm" style="flex:1;min-width:80px;" onclick="openEditQuestions('${q.QuizID}','${esc(q.QuizTitle).replace(/\'/g,"\\'")}',event)">Questions</button>
+          <button class="btn ghost sm" style="flex:1;min-width:70px;" onclick="viewResults('${q.QuizID}','${esc(q.QuizTitle).replace(/\'/g,"\\'")}',event)">Results</button>
+          <button class="btn ghost sm" style="flex:1;min-width:60px;" onclick="shareQuiz('${q.QuizID}','${esc(q.QuizTitle).replace(/\'/g,"\\'")}',event)">Share</button>
         </div>
       </div>
     `;
