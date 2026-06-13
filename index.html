@@ -433,12 +433,13 @@ input, textarea, select, .inp, .sel {
   color: var(--text-primary) !important;
 }
 #s-home .inp, #s-name-entry .inp, #s-name-entry .sel {
-  background: rgba(0,0,0,.35) !important;
+  background: rgba(0,0,0,.55) !important;
   -webkit-text-fill-color: #fff !important;
   color: #fff !important;
-  border-color: rgba(255,255,255,.5) !important;
-  backdrop-filter: blur(6px) !important;
-  -webkit-backdrop-filter: blur(6px) !important;
+  border-color: rgba(255,255,255,.6) !important;
+  backdrop-filter: blur(8px) !important;
+  -webkit-backdrop-filter: blur(8px) !important;
+  font-weight: 600 !important;
 }
 #s-home .inp::placeholder, #s-name-entry .inp::placeholder {
   color: rgba(255,255,255,.6) !important;
@@ -593,7 +594,7 @@ input, textarea, select, .inp, .sel {
           <div style="font-size:.6rem;font-weight:700;letter-spacing:2.5px;text-transform:uppercase;color:rgba(255,255,255,.5);margin-bottom:10px;">Have an access code?</div>
           <div style="display:flex;flex-direction:column;gap:9px;">
             <input class="inp" id="home-code" placeholder="Enter code"
-              style="width:100%;text-transform:uppercase;text-align:center;background:rgba(0,0,0,.35);border-color:rgba(255,255,255,.5);color:#fff;letter-spacing:3px;"
+              style="width:100%;text-transform:uppercase;text-align:center;background:rgba(0,0,0,.55);border-color:rgba(255,255,255,.6);color:#fff;letter-spacing:3px;font-weight:700;"
               onkeyup="if(event.key==='Enter')submitCode()">
             <button class="btn full ghost" onclick="submitCode()" style="border-color:rgba(255,255,255,.4);color:#fff;font-size:.8rem;">Continue</button>
           </div>
@@ -614,11 +615,11 @@ input, textarea, select, .inp, .sel {
       <div style="font-size:.6rem;font-weight:700;letter-spacing:3px;text-transform:uppercase;color:rgba(255,255,255,.5);margin-bottom:8px;">Starting</div>
       <div id="name-entry-quiz-title" style="font-family:'Sora',sans-serif;font-size:1.05rem;font-weight:700;margin-bottom:26px;line-height:1.4;color:#fff;"></div>
       <label class="lbl" style="text-align:left;display:block;color:rgba(255,255,255,.6);">Your Name</label>
-      <input class="inp" id="user-name-input" placeholder="Full name" style="margin-bottom:14px;text-align:center;background:rgba(0,0,0,.35);border-color:rgba(255,255,255,.5);color:#fff;"
-        onkeydown="if(event.key==='Enter')beginQuiz()">
+      <input class="inp" id="user-name-input" placeholder="FULL NAME" style="margin-bottom:14px;text-align:center;background:rgba(0,0,0,.55);border-color:rgba(255,255,255,.6);color:#fff;font-weight:700;letter-spacing:2px;text-transform:uppercase;"
+        onkeydown="if(event.key==='Enter')beginQuiz()" oninput="this.value=this.value.toUpperCase()">
       <div id="ne-timer-row" style="display:none;margin-bottom:14px;">
         <label class="lbl" style="text-align:left;display:block;color:rgba(255,255,255,.6);">Set a Timer (optional)</label>
-        <select class="sel" id="ne-timer-select" style="background:rgba(0,0,0,.35);border-color:rgba(255,255,255,.5);color:#fff;">
+        <select class="sel" id="ne-timer-select" style="background:rgba(0,0,0,.55);border-color:rgba(255,255,255,.6);color:#fff;font-weight:600;">
           <option value="0">No time limit</option>
           <option value="5">5 minutes</option>
           <option value="10">10 minutes</option>
