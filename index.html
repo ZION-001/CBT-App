@@ -1315,36 +1315,52 @@ function renderPreviewList() {
     return;
   }
 
-  el.innerHTML = S.pendingQs.map((q, i) => {
-    const isTheory = q.questionType === 'theory' || q.correctAnswer === 'THEORY';
-    const badge = isTheory
-      ? `<span style="font-size:.6rem;font-weight:700;letter-spacing:1.5px;padding:2px 8px;border-radius:50px;background:var(--blue-light);color:var(--blue-mid);text-transform:uppercase;">Theory</span>`
-      : `<span style="font-size:.6rem;font-weight:700;letter-spacing:1.5px;padding:2px 8px;border-radius:50px;background:var(--surface2);color:var(--text-secondary);text-transform:uppercase;">MCQ · ${q.options ? q.options.length : 4} opts</span>`;
+  // Build DOM nodes one by one to avoid a single large innerHTML parse failure
+  el.innerHTML = '';
+  S.pendingQs.forEach(function(q, i) {
+    try {
+      const isTheory = q.questionType === 'theory' || q.correctAnswer === 'THEORY';
+      const badgeTxt = isTheory ? 'Theory' : 'MCQ · ' + (q.options ? q.options.length : 0) + ' opts';
+      const badgeStyle = isTheory
+        ? 'font-size:.6rem;font-weight:700;letter-spacing:1.5px;padding:2px 8px;border-radius:50px;background:var(--blue-light);color:var(--blue-mid);text-transform:uppercase;'
+        : 'font-size:.6rem;font-weight:700;letter-spacing:1.5px;padding:2px 8px;border-radius:50px;background:var(--surface2);color:var(--text-secondary);text-transform:uppercase;';
 
-    const preview = isTheory
-      ? `<div style="font-size:.75rem;color:var(--text-secondary);margin-top:4px;">Model: ${esc((q.correctAnswer||q.modelAnswer||'').slice(0,60))}${(q.correctAnswer||'').length>60?'…':''}</div>`
-      : `<div style="font-size:.75rem;color:var(--text-secondary);margin-top:4px;">${(q.options||[]).slice(0,3).map((o,idx)=>LETTERS[idx]+'. '+esc(o.slice(0,20))).join(' · ')}${(q.options||[]).length>3?' …':''}</div>`;
+      const previewTxt = isTheory
+        ? 'Model: ' + (q.correctAnswer || q.modelAnswer || '').slice(0, 60)
+        : (q.options || []).slice(0, 3).map(function(o, idx) { return LETTERS[idx] + '. ' + o.slice(0, 20); }).join(' · ') + ((q.options||[]).length > 3 ? ' …' : '');
 
-    const expBadge = q.explanation
-      ? `<span style="font-size:.6rem;color:var(--green-dim);font-weight:600;">+ Explanation</span>`
-      : `<span style="font-size:.6rem;color:var(--red);font-weight:600;">No explanation</span>`;
+      const hasExp = q.explanation && q.explanation.trim();
 
-    return `
-      <div class="li" style="flex-direction:column;align-items:stretch;gap:8px;cursor:pointer;" onclick="openEditQ(${i})">
-        <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px;">
-          <div style="flex:1;">
-            <div style="display:flex;align-items:center;gap:6px;margin-bottom:5px;">
-              <span style="font-size:.65rem;font-weight:700;color:var(--text-muted);">${i+1}</span>
-              ${badge}
-              ${expBadge}
-            </div>
-            <div class="li-name" style="font-size:.85rem;line-height:1.5;">${esc(q.question)}</div>
-            ${preview}
-          </div>
-          <button class="btn ghost sm" style="flex-shrink:0;" onclick="event.stopPropagation();openEditQ(${i})">Edit</button>
-        </div>
-      </div>`;
-  }).join('');
+      const card = document.createElement('div');
+      card.className = 'li';
+      card.style.cssText = 'flex-direction:column;align-items:stretch;gap:8px;cursor:pointer;';
+      card.onclick = (function(idx){ return function(){ openEditQ(idx); }; })(i);
+
+      card.innerHTML =
+        '<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px;">' +
+          '<div style="flex:1;">' +
+            '<div style="display:flex;align-items:center;gap:6px;margin-bottom:5px;flex-wrap:wrap;">' +
+              '<span style="font-size:.65rem;font-weight:700;color:var(--text-muted);">' + (i+1) + '</span>' +
+              '<span style="' + badgeStyle + '">' + badgeTxt + '</span>' +
+              '<span style="font-size:.6rem;font-weight:600;color:' + (hasExp ? 'var(--green-dim)' : 'var(--red)') + ';">' + (hasExp ? '+ Explanation' : 'No explanation') + '</span>' +
+            '</div>' +
+            '<div class="li-name" style="font-size:.85rem;line-height:1.5;">' + esc(q.question) + '</div>' +
+            '<div style="font-size:.75rem;color:var(--text-secondary);margin-top:4px;">' + esc(previewTxt) + '</div>' +
+          '</div>' +
+          '<button class="btn ghost sm" style="flex-shrink:0;" onclick="event.stopPropagation();openEditQ(' + i + ')">Edit</button>' +
+        '</div>';
+
+      el.appendChild(card);
+    } catch(err) {
+      // If one question fails to render, show a placeholder so others still show
+      const errCard = document.createElement('div');
+      errCard.className = 'li';
+      errCard.style.cssText = 'color:var(--red);font-size:.8rem;';
+      errCard.textContent = (i+1) + '. (render error — click to edit)';
+      errCard.onclick = (function(idx){ return function(){ openEditQ(idx); }; })(i);
+      el.appendChild(errCard);
+    }
+  });
 }
 
 /* ── Add more questions from preview page ── */
