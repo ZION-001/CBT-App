@@ -1405,26 +1405,40 @@ function getEqCurrentOptions() {
 function renderEqImage(url) {
   const wrap = $('eq-img-wrap');
   if (url) {
-    wrap.innerHTML = `
-      <label class="lbl">Image</label>
-      <img src="${esc(url)}" style="max-width:100%;border-radius:8px;border:1px solid var(--border);margin-bottom:8px;display:block;">
-      <button class="btn ghost sm" onclick="eqRemoveImage()">Remove Image</button>`;
+    wrap.innerHTML =
+      '<label class="lbl">Image</label>' +
+      '<img src="' + esc(url) + '" style="max-width:100%;border-radius:8px;border:1px solid var(--border);margin-bottom:8px;display:block;">' +
+      '<button class="btn ghost sm" onclick="eqRemoveImage()">Remove Image</button>';
   } else {
-    wrap.innerHTML = `
-      <label class="lbl">Image (optional)</label>
-      <input type="file" accept="image/*" id="eq-img-input" style="display:none" onchange="eqUploadImage(this)">
-      <button class="btn ghost sm" onclick="$('eq-img-input').click()">+ Attach Image</button>
-      <span id="eq-img-status" style="font-size:.75rem;color:var(--text-muted);margin-left:8px;"></span>`;
+    wrap.innerHTML =
+      '<label class="lbl">Image (optional)</label>' +
+      '<input type="file" accept="image/*" id="eq-img-input" style="display:none" onchange="eqUploadImage(this)">' +
+      '<button class="btn ghost sm" onclick="eqTriggerImagePick()">+ Attach Image</button>' +
+      '<span id="eq-img-status" style="font-size:.75rem;color:var(--text-muted);margin-left:8px;"></span>';
   }
+}
+
+function eqTriggerImagePick() {
+  const inp = document.getElementById('eq-img-input');
+  if (inp) inp.click();
 }
 
 async function eqUploadImage(inputEl) {
   const file = inputEl.files[0]; if (!file) return;
-  $('eq-img-status').textContent = 'Uploading...';
+  const status = document.getElementById('eq-img-status');
+  if (status) status.textContent = 'Uploading...';
   const r = await uploadQuestionImage(file);
-  if (!r.success) { $('eq-img-status').textContent = 'Failed'; return; }
+  if (!r.success) {
+    if (status) status.textContent = 'Failed: ' + r.error;
+    return;
+  }
   S.pendingQs[S.editQIdx].imageUrl = r.data.url;
   renderEqImage(r.data.url);
+  // If editing an already-saved question, persist image immediately
+  const q = S.pendingQs[S.editQIdx];
+  if (S.editQMode === 'existing' && q.QuestionID) {
+    updateQuestionOnServer(q);
+  }
 }
 
 function eqRemoveImage() {
