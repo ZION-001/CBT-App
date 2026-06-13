@@ -30,6 +30,12 @@
   --grad-main:linear-gradient(135deg,#0d1b6e 0%,#1a3aad 45%,#2f5fff 100%);
   --grad-spark:linear-gradient(135deg,#2f5fff 0%,#e8294a 55%,#f5b800 100%);
   --grad-hero:linear-gradient(160deg,#0a1356 0%,#1a3aad 40%,#2f5fff 70%,#e8294a 90%,#f5b800 100%);
+  /* animated colour stops — updated by JS */
+  --ac1:hsl(225,85%,25%);
+  --ac2:hsl(220,80%,45%);
+  --ac3:hsl(215,100%,60%);
+  --ac4:hsl(355,80%,55%);
+  --ac5:hsl(45,95%,55%);
   --shadow-sm:0 2px 8px rgba(13,27,110,.10);
   --shadow-md:0 4px 20px rgba(13,27,110,.15);
   --shadow-lg:0 8px 40px rgba(13,27,110,.22);
@@ -417,6 +423,103 @@ textarea.inp{min-height:160px;resize:vertical;}
 .math{font-style:italic;}
 .mathd{text-align:center;margin:8px 0;font-style:italic;}
 @media(min-width:600px){.page{max-width:600px;margin:0 auto;}}
+
+/* ── ANIMATED GRADIENTS ── */
+
+/* Hard-exclude all form inputs / textareas / selects from gradient rules */
+input, textarea, select, .inp, .sel {
+  background: var(--card) !important;
+  -webkit-text-fill-color: var(--text-primary) !important;
+  color: var(--text-primary) !important;
+}
+#s-home .inp, #s-name-entry .inp, #s-name-entry .sel {
+  background: rgba(0,0,0,.35) !important;
+  -webkit-text-fill-color: #fff !important;
+  color: #fff !important;
+  border-color: rgba(255,255,255,.5) !important;
+  backdrop-filter: blur(6px) !important;
+  -webkit-backdrop-filter: blur(6px) !important;
+}
+#s-home .inp::placeholder, #s-name-entry .inp::placeholder {
+  color: rgba(255,255,255,.6) !important;
+  -webkit-text-fill-color: rgba(255,255,255,.6) !important;
+}
+/* Ghost button on hero screens — dark semi-transparent so it's always readable */
+#s-home .btn.ghost, #s-name-entry .btn.ghost {
+  background: rgba(0,0,0,.3) !important;
+  color: #fff !important;
+  border-color: rgba(255,255,255,.5) !important;
+  backdrop-filter: blur(6px) !important;
+}
+/* All gradient-bearing elements use CSS vars updated by JS */
+
+/* Hero / full-screen backgrounds */
+.screen > div[style*="grad-hero"],
+#s-home > div,
+#s-name-entry > div {
+  background: linear-gradient(160deg, var(--ac1) 0%, var(--ac2) 35%, var(--ac3) 65%, var(--ac4) 88%, var(--ac5) 100%) !important;
+  transition: background 1.8s ease;
+}
+
+/* Main gradient — buttons, subj-head, admin-bar, res-table th */
+.btn:not(.ghost):not(.danger),
+.subj-head,
+.admin-bar,
+.res-table th,
+.opt.sel,
+.q-grid-btn.answered {
+  background: linear-gradient(135deg, var(--ac1) 0%, var(--ac2) 50%, var(--ac3) 100%) !important;
+  transition: background 1.8s ease;
+}
+
+/* Spark gradient — progress bar, topbar title, pg-title border, step-hdr border */
+.prog-bar {
+  background: linear-gradient(90deg, var(--ac3) 0%, var(--ac4) 55%, var(--ac5) 100%) !important;
+  transition: background 1.8s ease;
+}
+.topbar-title {
+  background: linear-gradient(135deg, var(--ac3) 0%, var(--ac4) 55%, var(--ac5) 100%) !important;
+  -webkit-background-clip: text !important;
+  background-clip: text !important;
+  transition: background 1.8s ease;
+}
+.pg-title {
+  border-image: linear-gradient(90deg, var(--ac3), var(--ac4), var(--ac5)) 1 !important;
+}
+.step-hdr {
+  border-image: linear-gradient(90deg, var(--ac3), var(--ac4), var(--ac5)) 1 !important;
+}
+
+/* Result box hero */
+.result-box {
+  background: linear-gradient(160deg, var(--ac1) 0%, var(--ac2) 40%, var(--ac3) 70%, var(--ac4) 90%, var(--ac5) 100%) !important;
+  transition: background 1.8s ease;
+}
+
+/* Result percentage text */
+.result-pct {
+  background: linear-gradient(135deg, #fff, var(--ac5)) !important;
+  -webkit-background-clip: text !important;
+  background-clip: text !important;
+}
+
+/* Home browse / start quiz button (yellow-red override) */
+#s-home .btn.full:not(.ghost),
+#s-name-entry .btn.full:not(.ghost) {
+  background: linear-gradient(135deg, var(--ac5) 0%, var(--ac4) 100%) !important;
+  box-shadow: 0 4px 18px rgba(0,0,0,.28) !important;
+  transition: background 1.8s ease;
+}
+
+/* Accent bar on home card */
+#s-home div[style*="linear-gradient(90deg"] {
+  background: linear-gradient(90deg, var(--ac5), var(--ac4)) !important;
+}
+
+/* Toast border-left */
+#toast {
+  border-left-color: var(--ac3) !important;
+}
 </style>
 </head>
 <body>
@@ -428,7 +531,7 @@ textarea.inp{min-height:160px;resize:vertical;}
 <div id="g-loader" style="
   position:fixed;inset:0;z-index:99990;
   display:flex;flex-direction:column;align-items:center;justify-content:center;
-  background:rgba(10,19,86,.72);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);
+  background:rgba(10,19,86,.18);backdrop-filter:blur(1px);-webkit-backdrop-filter:blur(1px);
   opacity:0;visibility:hidden;
   transition:opacity .22s ease, visibility .22s ease;
   pointer-events:none;
@@ -490,7 +593,7 @@ textarea.inp{min-height:160px;resize:vertical;}
           <div style="font-size:.6rem;font-weight:700;letter-spacing:2.5px;text-transform:uppercase;color:rgba(255,255,255,.5);margin-bottom:10px;">Have an access code?</div>
           <div style="display:flex;flex-direction:column;gap:9px;">
             <input class="inp" id="home-code" placeholder="Enter code"
-              style="width:100%;text-transform:uppercase;text-align:center;background:rgba(255,255,255,.1);border-color:rgba(255,255,255,.25);color:#fff;letter-spacing:3px;"
+              style="width:100%;text-transform:uppercase;text-align:center;background:rgba(0,0,0,.35);border-color:rgba(255,255,255,.5);color:#fff;letter-spacing:3px;"
               onkeyup="if(event.key==='Enter')submitCode()">
             <button class="btn full ghost" onclick="submitCode()" style="border-color:rgba(255,255,255,.4);color:#fff;font-size:.8rem;">Continue</button>
           </div>
@@ -511,11 +614,11 @@ textarea.inp{min-height:160px;resize:vertical;}
       <div style="font-size:.6rem;font-weight:700;letter-spacing:3px;text-transform:uppercase;color:rgba(255,255,255,.5);margin-bottom:8px;">Starting</div>
       <div id="name-entry-quiz-title" style="font-family:'Sora',sans-serif;font-size:1.05rem;font-weight:700;margin-bottom:26px;line-height:1.4;color:#fff;"></div>
       <label class="lbl" style="text-align:left;display:block;color:rgba(255,255,255,.6);">Your Name</label>
-      <input class="inp" id="user-name-input" placeholder="Full name" style="margin-bottom:14px;text-align:center;background:rgba(255,255,255,.1);border-color:rgba(255,255,255,.25);color:#fff;"
+      <input class="inp" id="user-name-input" placeholder="Full name" style="margin-bottom:14px;text-align:center;background:rgba(0,0,0,.35);border-color:rgba(255,255,255,.5);color:#fff;"
         onkeydown="if(event.key==='Enter')beginQuiz()">
       <div id="ne-timer-row" style="display:none;margin-bottom:14px;">
         <label class="lbl" style="text-align:left;display:block;color:rgba(255,255,255,.6);">Set a Timer (optional)</label>
-        <select class="sel" id="ne-timer-select" style="background:rgba(255,255,255,.1);border-color:rgba(255,255,255,.25);color:#fff;">
+        <select class="sel" id="ne-timer-select" style="background:rgba(0,0,0,.35);border-color:rgba(255,255,255,.5);color:#fff;">
           <option value="0">No time limit</option>
           <option value="5">5 minutes</option>
           <option value="10">10 minutes</option>
@@ -2721,6 +2824,104 @@ async function saveManualQs() {
   } else {
     toast('Quiz not found');
   }
+})();
+</script>
+
+<!-- ════════════ ANIMATED GRADIENT ENGINE ════════════ -->
+<script>
+(function() {
+  /* 
+   * Palette engine — generates beautiful, truly varied colour combos.
+   * Each "palette" is a 5-stop HSL set for --ac1…--ac5.
+   * The engine smoothly interpolates between randomly chosen palettes.
+   */
+
+  // Curated hue families that produce gorgeous multi-colour gradients
+  const PALETTE_SEEDS = [
+    // Wide-spectrum palettes — beautiful transitions across the full wheel
+    [220, 260, 300, 340, 20],   // blue → indigo → magenta → rose → coral
+    [180, 220, 260, 300, 340],  // teal → blue → violet → pink → rose
+    [140, 180, 220, 260, 300],  // green → teal → blue → indigo → violet
+    [30,  60,  100, 160, 220],  // amber → gold → lime → teal → blue
+    [340, 300, 260, 200, 160],  // pink → violet → blue → sky → mint
+    [20,  50,  100, 180, 240],  // coral → orange → olive → cyan → blue
+    [260, 300, 340, 20,  60],   // violet → magenta → rose → coral → gold
+    [160, 200, 240, 280, 320],  // mint → sky → blue → purple → pink
+    [40,  80,  140, 200, 260],  // gold → lime → teal → sky → indigo
+    [320, 280, 220, 160, 100],  // pink → purple → blue → teal → yellow-green
+    [10,  40,  160, 220, 280],  // red → orange → teal → blue → violet
+    [200, 240, 280, 20,  60],   // sky → blue → purple → coral → amber
+  ];
+
+  // Moderate saturation — vivid but not neon, dark-to-bright range
+  const SAT  = [55, 58, 62, 58, 55];
+  const LITE = [20, 32, 48, 42, 35];
+
+  let currentPalette = null;
+  let targetPalette  = null;
+  let progress       = 1;
+  const TRANSITION_SPEED = 0.0008; // ~12 s per transition — very slow and dreamy
+
+  function randomPalette() {
+    const seed = PALETTE_SEEDS[Math.floor(Math.random() * PALETTE_SEEDS.length)];
+    // Randomly rotate the hue set slightly for variety
+    const offset = Math.random() * 40 - 20;
+    return seed.map((h, i) => ({
+      h: (h + offset + 360) % 360,
+      s: SAT[i]  + (Math.random() * 8 - 4),
+      l: LITE[i] + (Math.random() * 8 - 4),
+    }));
+  }
+
+  function lerp(a, b, t) { return a + (b - a) * t; }
+
+  function lerpHue(a, b, t) {
+    // Always take the shortest arc around the colour wheel
+    let diff = b - a;
+    if (diff >  180) diff -= 360;
+    if (diff < -180) diff += 360;
+    return (a + diff * t + 360) % 360;
+  }
+
+  function applyPalette(p) {
+    const root = document.documentElement;
+    p.forEach((stop, i) => {
+      root.style.setProperty(
+        `--ac${i + 1}`,
+        `hsl(${stop.h.toFixed(1)},${stop.s.toFixed(1)}%,${stop.l.toFixed(1)}%)`
+      );
+    });
+  }
+
+  function tick() {
+    if (progress >= 1) {
+      // Snap to target, pick new target
+      currentPalette = targetPalette || randomPalette();
+      targetPalette  = randomPalette();
+      progress = 0;
+    }
+
+    // Ease in-out cubic
+    const t = progress < 0.5
+      ? 4 * progress * progress * progress
+      : 1 - Math.pow(-2 * progress + 2, 3) / 2;
+
+    const interpolated = currentPalette.map((c, i) => ({
+      h: lerpHue(c.h, targetPalette[i].h, t),
+      s: lerp(c.s,    targetPalette[i].s, t),
+      l: lerp(c.l,    targetPalette[i].l, t),
+    }));
+
+    applyPalette(interpolated);
+    progress += TRANSITION_SPEED;
+    requestAnimationFrame(tick);
+  }
+
+  // Bootstrap
+  currentPalette = randomPalette();
+  targetPalette  = randomPalette();
+  applyPalette(currentPalette);
+  requestAnimationFrame(tick);
 })();
 </script>
 </body>
